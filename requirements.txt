@@ -1,2 +1,7 @@
 django>=4.2,<5.0
 openpyxl>=3.1
+asgiref==3.11.1
+et_xmlfile==2.0.0
+psycopg2-binary==2.9.12
+sqlparse==0.5.5
+tzdata==2026.1
