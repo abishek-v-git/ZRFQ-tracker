@@ -50,6 +50,28 @@
             padding-bottom: 4px;
             margin-bottom: 10px;
         }
+
+        /* Sticky Last Column (Actions) */
+        table.rfq-table th:last-child,
+        table.rfq-table td:last-child {
+            position: sticky;
+            right: 0;
+            border-left: 1px solid #dee2e6;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+        }
+        table.rfq-table th:last-child {
+            z-index: 10; /* Above regular sticky header (z-index 2) */
+            background: #003366 !important;
+        }
+        table.rfq-table td:last-child {
+            z-index: 5;
+            background: #fff;
+        }
+        table.rfq-table tbody tr:hover td:last-child {
+            background: #eef3fb;
+        }
+        /* Handle z-index for the highlighted MFR column so it doesn't overlap sticky actions */
+        .col-mfr-pn { position: relative; z-index: 1; }
     </style>
 </head>
 <body>
