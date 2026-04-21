@@ -1,6 +1,19 @@
 {% extends "tracker/base.html" %}
 {% block content %}
 
+<style>
+    .rfq-table th.sortable { cursor: pointer; position: relative; padding-right: 25px !important; }
+    .rfq-table th.sortable:after {
+        content: '↕';
+        position: absolute;
+        right: 8px;
+        opacity: 0.3;
+        font-size: 0.8em;
+    }
+    .rfq-table th.sortable.asc:after { content: '↑'; opacity: 1; }
+    .rfq-table th.sortable.desc:after { content: '↓'; opacity: 1; }
+</style>
+
 <!-- Top Action Bar -->
 <div class="d-flex align-items-center gap-2 mb-3">
     <button class="btn btn-primary btn-sm" id="toggleAddBtn" onclick="toggleAddButtons()">
@@ -55,51 +68,51 @@
         <table class="table table-bordered table-hover rfq-table mb-0">
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Supplier Code</th>
-                    <th>Supplier Name</th>
-                    <th>Part No</th>
-                    <th>Part Description</th>
-                    <th>Order Qty</th>
-                    <th>UOM</th>
-                    <th>Unit Price</th>
-                    <th>Currency</th>
-                    <th>PIC</th>
-                    <th>Contact Email</th>
-                    <th>Contact Secondary Email</th>
-                    <th>Lead Time (days)</th>
-                    <th>Ship Lead Time (days)</th>
-                    <th>UOM</th>
-                    <th>COO</th>
-                    <th>Currency</th>
-                    <th>Unit Price 1</th>
-                    <th>MOQ-1</th>
-                    <th>Unit Price 2</th>
-                    <th>MOQ-2</th>
-                    <th>Unit Price 3</th>
-                    <th>MOQ-3</th>
-                    <th>Lot Size</th>
-                    <th>HTS Code</th>
-                    <th>ECCN/EAR99</th>
-                    <th>Manufacture Part Number</th>
-                    <th>Manufacturer Name</th>
-                    <th>Manufacturer Address</th>
-                    <th>Item Weight (kg)</th>
-                    <th>Volume Weight (kg)</th>
-                    <th>Russian Steel Confirmation</th>
-                    <th>Hazmat (Y/N)</th>
-                    <th>UN# · SDS/MSDS</th>
-                    <th>Product Regulation</th>
-                    <th>EOL Status</th>
-                    <th>Alternative Part(s)</th>
-                    <th>Alternative Part No</th>
-                    <th>Mfg Address + Postal (CN Only)</th>
-                    <th>UFLPA Compliance (CN Only)</th>
-                    <th>UFLPA Start Date</th>
-                    <th>UFLPA Expiry Date</th>
-                    <th>USMCA Certificate (CA/MX Only)</th>
-                    <th>USMCA Start Date</th>
-                    <th>USMCA Expiry Date</th>
+                    <th class="sortable" data-col="0">#</th>
+                    <th class="sortable" data-col="1">Supplier Code</th>
+                    <th class="sortable" data-col="2">Supplier Name</th>
+                    <th class="sortable" data-col="3">Part No</th>
+                    <th class="sortable" data-col="4">Part Description</th>
+                    <th class="sortable" data-col="5">Order Qty</th>
+                    <th class="sortable" data-col="6">UOM</th>
+                    <th class="sortable" data-col="7">Unit Price</th>
+                    <th class="sortable" data-col="8">Currency</th>
+                    <th class="sortable" data-col="9">PIC</th>
+                    <th class="sortable" data-col="10">Contact Email</th>
+                    <th class="sortable" data-col="11">Contact Secondary Email</th>
+                    <th class="sortable" data-col="12">Lead Time (days)</th>
+                    <th class="sortable" data-col="13">Ship Lead Time (days)</th>
+                    <th class="sortable" data-col="14">UOM</th>
+                    <th class="sortable" data-col="15">COO</th>
+                    <th class="sortable" data-col="16">Currency</th>
+                    <th class="sortable" data-col="17">Unit Price 1</th>
+                    <th class="sortable" data-col="18">MOQ-1</th>
+                    <th class="sortable" data-col="19">Unit Price 2</th>
+                    <th class="sortable" data-col="20">MOQ-2</th>
+                    <th class="sortable" data-col="21">Unit Price 3</th>
+                    <th class="sortable" data-col="22">MOQ-3</th>
+                    <th class="sortable" data-col="23">Lot Size</th>
+                    <th class="sortable" data-col="24">HTS Code</th>
+                    <th class="sortable" data-col="25">ECCN/EAR99</th>
+                    <th class="sortable" data-col="26">Manufacture Part Number</th>
+                    <th class="sortable" data-col="27">Manufacturer Name</th>
+                    <th class="sortable" data-col="28">Manufacturer Address</th>
+                    <th class="sortable" data-col="29">Item Weight (kg)</th>
+                    <th class="sortable" data-col="30">Volume Weight (kg)</th>
+                    <th class="sortable" data-col="31">Russian Steel Confirmation</th>
+                    <th class="sortable" data-col="32">Hazmat (Y/N)</th>
+                    <th class="sortable" data-col="33">UN# · SDS/MSDS</th>
+                    <th class="sortable" data-col="34">Product Regulation</th>
+                    <th class="sortable" data-col="35">EOL Status</th>
+                    <th class="sortable" data-col="36">Alternative Part(s)</th>
+                    <th class="sortable" data-col="37">Alternative Part No</th>
+                    <th class="sortable" data-col="38">Mfg Address + Postal (CN Only)</th>
+                    <th class="sortable" data-col="39">UFLPA Compliance (CN Only)</th>
+                    <th class="sortable" data-col="40">UFLPA Start Date</th>
+                    <th class="sortable" data-col="41">UFLPA Expiry Date</th>
+                    <th class="sortable" data-col="42">USMCA Certificate (CA/MX Only)</th>
+                    <th class="sortable" data-col="43">USMCA Start Date</th>
+                    <th class="sortable" data-col="44">USMCA Expiry Date</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -424,6 +437,7 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
     let filteredRows = allRows;
     let currentPage = 1;
     let pageSize = 20;
+    let currentSort = { col: -1, asc: true };
 
     function totalPages() {
         if (pageSize === 'all') return 1;
@@ -471,6 +485,41 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         buildNav(pageNavBottom, tp);
     }
 
+    function sort(colIdx) {
+        if (currentSort.col === colIdx) {
+            currentSort.asc = !currentSort.asc;
+        } else {
+            currentSort.col = colIdx;
+            currentSort.asc = true;
+        }
+
+        // Update header UI
+        document.querySelectorAll('.rfq-table th.sortable').forEach((th, i) => {
+            th.classList.remove('asc', 'desc');
+            if (i === colIdx) th.classList.add(currentSort.asc ? 'asc' : 'desc');
+        });
+
+        filteredRows.sort((a, b) => {
+            let valA = a.cells[colIdx].textContent.trim().toLowerCase();
+            let valB = b.cells[colIdx].textContent.trim().toLowerCase();
+            
+            // Handle numeric sorting
+            let numA = parseFloat(valA.replace(/[^0-9.-]+/g,""));
+            let numB = parseFloat(valB.replace(/[^0-9.-]+/g,""));
+            
+            if (!isNaN(numA) && !isNaN(numB) && valA.match(/^[0-9,.-]+$/)) {
+                return currentSort.asc ? numA - numB : numB - numA;
+            }
+
+            if (valA < valB) return currentSort.asc ? -1 : 1;
+            if (valA > valB) return currentSort.asc ? 1 : -1;
+            return 0;
+        });
+
+        currentPage = 1;
+        render();
+    }
+
     function buildNav(container, tp) {
         container.innerHTML = '';
         if (tp <= 1) return;
@@ -511,6 +560,10 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         container.appendChild(btn);
     }
 
+    document.querySelectorAll('.rfq-table th.sortable').forEach((th, i) => {
+        th.addEventListener('click', () => sort(i));
+    });
+
     sizeSelect.addEventListener('change', function() {
         var val = this.value;
         pageSize = val === 'all' ? 'all' : parseInt(val, 10);
@@ -521,14 +574,21 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
     searchInput.addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();
         if (!query) {
-            filteredRows = allRows;
+            filteredRows = [...allRows];
         } else {
             filteredRows = allRows.filter(row => {
                 return row.textContent.toLowerCase().includes(query);
             });
         }
-        currentPage = 1;
-        render();
+        // Preserve sort if active
+        if (currentSort.col !== -1) {
+            const saveCol = currentSort.col;
+            currentSort.col = -1; // reset to force re-sort
+            sort(saveCol);
+        } else {
+            currentPage = 1;
+            render();
+        }
     });
 
     render();
