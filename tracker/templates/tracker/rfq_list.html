@@ -12,6 +12,84 @@
     }
     .rfq-table th.sortable.asc:after { content: '↑'; opacity: 1; }
     .rfq-table th.sortable.desc:after { content: '↓'; opacity: 1; }
+
+    /* Inline dropdown selects */
+    .inline-select {
+        font-size: 12px;
+        padding: 1px 4px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background: transparent;
+        cursor: pointer;
+        min-width: 75px;
+        max-width: 140px;
+    }
+    .inline-select:hover { border-color: #adb5bd; background: #fff; }
+    .inline-select:focus { border-color: #0d6efd; background: #fff; outline: none; box-shadow: none; }
+    .inline-select.is-saving { opacity: 0.5; pointer-events: none; }
+    .inline-select.is-saved { border-color: #198754 !important; background: #d1e7dd !important; transition: background 0.3s; }
+
+    /* Save toast */
+    #saveToast {
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        min-width: 220px; font-size: 13px;
+    }
+
+    /* Floating Comments Explorer */
+    .comments-cell { position: relative; }
+    .comment-container { position: relative; width: 100%; }
+    
+    .comments-txt {
+        width: 100%;
+        min-height: 28px;
+        max-height: 28px;
+        font-size: 11px;
+        line-height: 1.4;
+        resize: none;
+        overflow: hidden;
+        transition: box-shadow 0.2s, border-color 0.2s;
+        padding-right: 25px; /* Space for the expand icon */
+    }
+
+    /* The "Hover" expansion effect on focus */
+    .comments-txt:focus {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 320px;
+        min-height: 120px;
+        max-height: 400px;
+        z-index: 1100; /* High enough to clear everything */
+        overflow-y: auto;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        background: #fff !important;
+        padding: 10px;
+        border: 2px solid #0d6efd !important;
+        border-radius: 6px;
+        outline: none;
+    }
+
+    .expand-comment-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        padding: 0 4px;
+        font-size: 10px;
+        color: #999;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        z-index: 1051;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .comment-container:hover .expand-comment-btn { opacity: 1; }
+    .expand-comment-btn:hover { color: #0d6efd; }
+
+    /* Fix stacking context so focused cell stays on top of other sticky columns */
+    .comments-cell:focus-within {
+        z-index: 2000 !important;
+    }
 </style>
 
 <!-- Top Action Bar -->
@@ -113,6 +191,8 @@
                     <th class="sortable" data-col="42">USMCA Certificate (CA/MX Only)</th>
                     <th class="sortable" data-col="43">USMCA Start Date</th>
                     <th class="sortable" data-col="44">USMCA Expiry Date</th>
+                    <th class="sortable" data-col="45">Status</th>
+                    <th class="sortable" data-col="46">Comments</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -150,24 +230,81 @@
                     <td title="{{ e.manufacturer_address }}">{{ e.manufacturer_address|truncatechars:30|default:"—" }}</td>
                     <td>{{ e.item_weight_kg|default:"—" }}</td>
                     <td>{{ e.volume_weight_kg|default:"—" }}</td>
-                    <td>{{ e.russian_steel_confirmation|default:"—" }}</td>
-                    <td>{{ e.hazmat|default:"—" }}</td>
-                    <td>{{ e.un_sds_msds|default:"—" }}</td>
-                    <td>{{ e.product_regulation|default:"—" }}</td>
-                    <td>{{ e.eol_status|default:"—" }}</td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="russian_steel_confirmation">
+                        <option value="">—</option>
+                        <option value="Yes"{% if e.russian_steel_confirmation == "Yes" %} selected{% endif %}>Yes</option>
+                        <option value="No"{% if e.russian_steel_confirmation == "No" %} selected{% endif %}>No</option>
+                    </select></td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="hazmat">
+                        <option value="">—</option>
+                        <option value="Yes"{% if e.hazmat == "Yes" %} selected{% endif %}>Yes</option>
+                        <option value="No"{% if e.hazmat == "No" %} selected{% endif %}>No</option>
+                    </select></td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="un_sds_msds">
+                        <option value="">—</option>
+                        <option value="Yes"{% if e.un_sds_msds == "Yes" %} selected{% endif %}>Yes</option>
+                        <option value="No"{% if e.un_sds_msds == "No" %} selected{% endif %}>No</option>
+                    </select></td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="product_regulation">
+                        <option value="">—</option>
+                        <option value="FDA Compliance"{% if e.product_regulation == "FDA Compliance" %} selected{% endif %}>FDA Compliance</option>
+                        <option value="FCC Certification"{% if e.product_regulation == "FCC Certification" %} selected{% endif %}>FCC Certification</option>
+                        <option value="CE"{% if e.product_regulation == "CE" %} selected{% endif %}>CE</option>
+                        <option value="Others"{% if e.product_regulation == "Others" %} selected{% endif %}>Others</option>
+                        <option value="Not Applicable"{% if e.product_regulation == "Not Applicable" %} selected{% endif %}>Not Applicable</option>
+                    </select></td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="eol_status">
+                        <option value="">—</option>
+                        <option value="Yes"{% if e.eol_status == "Yes" %} selected{% endif %}>Yes</option>
+                        <option value="No"{% if e.eol_status == "No" %} selected{% endif %}>No</option>
+                    </select></td>
                     <td title="{{ e.alternative_parts }}">{{ e.alternative_parts|truncatechars:25|default:"—" }}</td>
                     <td>{{ e.alternative_part_no|default:"—" }}</td>
                     <td title="{{ e.mfg_address_postal_cn }}">{{ e.mfg_address_postal_cn|truncatechars:25|default:"—" }}</td>
-                    <td>{{ e.uflpa_compliance|default:"—" }}</td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="uflpa_compliance">
+                        <option value="">—</option>
+                        <option value="Yes"{% if e.uflpa_compliance == "Yes" %} selected{% endif %}>Yes</option>
+                        <option value="No"{% if e.uflpa_compliance == "No" %} selected{% endif %}>No</option>
+                    </select></td>
                     <td>{{ e.uflpa_start_date|default:"—" }}</td>
                     <td>{{ e.uflpa_expiry_date|default:"—" }}</td>
-                    <td>{{ e.usmca_certificate|default:"—" }}</td>
+                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="usmca_certificate">
+                        <option value="">—</option>
+                        <option value="Yes"{% if e.usmca_certificate == "Yes" %} selected{% endif %}>Yes</option>
+                        <option value="No"{% if e.usmca_certificate == "No" %} selected{% endif %}>No</option>
+                    </select></td>
                     <td>{{ e.usmca_start_date|default:"—" }}</td>
                     <td>{{ e.usmca_expiry_date|default:"—" }}</td>
+                    <td class="status-cell" style="min-width:150px;">
+                        <select class="inline-select status-sel" data-pk="{{ e.pk }}">
+                            <option value="">—</option>
+                            <option value="No Response Yet"{% if e.status == "No Response Yet" %} selected{% endif %}>No Response Yet</option>
+                            <option value="Partially Data Received"{% if e.status == "Partially Data Received" %} selected{% endif %}>Partially Data Received</option>
+                            <option value="Completed"{% if e.status == "Completed" %} selected{% endif %}>Completed</option>
+                            <option value="Others"{% if e.status and e.status != "No Response Yet" and e.status != "Partially Data Received" and e.status != "Completed" %} selected{% endif %}>Others</option>
+                        </select>
+                        <input type="text" class="form-control form-control-sm status-txt mt-1"
+                               data-pk="{{ e.pk }}"
+                               placeholder="Type status..."
+                               {% if e.status and e.status != "No Response Yet" and e.status != "Partially Data Received" and e.status != "Completed" %}value="{{ e.status }}" style="display:block;font-size:12px;"{% else %}style="display:none;font-size:12px;"{% endif %}>
+                    </td>
+                    <td class="comments-cell" style="min-width:200px;">
+                        <div class="comment-container">
+                            <textarea class="form-control form-control-sm comments-txt"
+                                      data-pk="{{ e.pk }}"
+                                      placeholder="Enter comment..."
+                                      rows="1">{{ e.comments }}</textarea>
+                            <button type="button" class="expand-comment-btn" title="Open Fullscreen"
+                                    onclick="openLongNoteModal(this.previousElementSibling)">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                            </button>
+                        </div>
+                    </td>
                     <td class="text-nowrap">
-                        <a href="{% url 'rfq_edit' e.pk %}" class="btn btn-sm btn-outline-primary btn-action me-1">
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-action me-1"
+                                onclick="openEditModal({{ e.pk }}, this.closest('tr'))">
                             <i class="bi bi-pencil"></i>
-                        </a>
+                        </button>
                         <button type="button"
                             class="btn btn-sm btn-outline-danger btn-action"
                             data-bs-toggle="modal"
@@ -180,7 +317,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="46" class="text-center text-muted py-5">
+                    <td colspan="48" class="text-center text-muted py-5">
                         No entries yet. Click <strong>+ Add New Item</strong> to get started.
                     </td>
                 </tr>
@@ -277,6 +414,11 @@
                         <div class="col-md-2"><label class="form-label">USMCA Start Date</label>{{ form.usmca_start_date }}</div>
                         <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ form.usmca_expiry_date }}</div>
 
+                        <!-- WORKFLOW -->
+                        <div class="col-12 mt-1"><div class="section-heading">Workflow</div></div>
+                        <div class="col-md-3"><label class="form-label">Status</label>{{ form.status }}</div>
+                        <div class="col-md-7"><label class="form-label">Comments</label>{{ form.comments }}</div>
+
                     </div>
                     {% if form.errors %}
                         <div class="alert alert-danger mt-2 py-2">
@@ -354,6 +496,112 @@
     </div>
 </div>
 
+<!-- ── Edit Entry Modal ── -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background:#003366;">
+                <h6 class="modal-title text-white"><i class="bi bi-pencil me-2"></i><span id="editModalTitle">Edit Entry</span></h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="editModalBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="mt-2 text-muted small">Loading…</p>
+                </div>
+            </div>
+            <!-- Static form rendered server-side for widget HTML; hidden until JS populates & shows it -->
+            <template id="editFormTpl">
+                <form id="editForm" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-2">
+                        <div class="col-12"><div class="section-heading">Supplier</div></div>
+                        <div class="col-md-2"><label class="form-label">Supplier Code *</label>{{ edit_form.supplier_code }}</div>
+                        <div class="col-md-3"><label class="form-label">Supplier Name *</label>{{ edit_form.supplier_name }}</div>
+                        <div class="col-md-2"><label class="form-label">PIC</label>{{ edit_form.pic }}</div>
+                        <div class="col-md-2"><label class="form-label">Contact Email</label>{{ edit_form.contact_email }}</div>
+                        <div class="col-md-3"><label class="form-label">Contact Secondary Email</label>{{ edit_form.contact_secondary_email }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Part</div></div>
+                        <div class="col-md-2"><label class="form-label">Part No *</label>{{ edit_form.part_no }}</div>
+                        <div class="col-md-4"><label class="form-label">Part Description</label>{{ edit_form.part_description }}</div>
+                        <div class="col-md-1"><label class="form-label">Order Qty</label>{{ edit_form.order_qty }}</div>
+                        <div class="col-md-1"><label class="form-label">UOM</label>{{ edit_form.uom }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price</label>{{ edit_form.unit_price }}</div>
+                        <div class="col-md-1"><label class="form-label">Currency</label>{{ edit_form.currency }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Lead Times</div></div>
+                        <div class="col-md-2"><label class="form-label">Lead Time (days)</label>{{ edit_form.lead_time_days }}</div>
+                        <div class="col-md-2"><label class="form-label">Ship Lead Time (days)</label>{{ edit_form.ship_lead_time_days }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Quote Details</div></div>
+                        <div class="col-md-1"><label class="form-label">UOM</label>{{ edit_form.quote_uom }}</div>
+                        <div class="col-md-2"><label class="form-label">COO</label>{{ edit_form.coo }}</div>
+                        <div class="col-md-1"><label class="form-label">Currency</label>{{ edit_form.quote_currency }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price 1</label>{{ edit_form.unit_price_1 }}</div>
+                        <div class="col-md-1"><label class="form-label">MOQ-1</label>{{ edit_form.moq_1 }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price 2</label>{{ edit_form.unit_price_2 }}</div>
+                        <div class="col-md-1"><label class="form-label">MOQ-2</label>{{ edit_form.moq_2 }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price 3</label>{{ edit_form.unit_price_3 }}</div>
+                        <div class="col-md-1"><label class="form-label">MOQ-3</label>{{ edit_form.moq_3 }}</div>
+                        <div class="col-md-1"><label class="form-label">Lot Size</label>{{ edit_form.lot_size }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Product Codes</div></div>
+                        <div class="col-md-2"><label class="form-label">HTS Code</label>{{ edit_form.hts_code }}</div>
+                        <div class="col-md-2"><label class="form-label">ECCN/EAR99</label>{{ edit_form.eccn_ear99 }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Manufacturer</div></div>
+                        <div class="col-md-2"><label class="form-label">Manufacture Part Number</label>{{ edit_form.manufacture_part_number }}</div>
+                        <div class="col-md-2"><label class="form-label">Manufacturer Name</label>{{ edit_form.manufacturer_name }}</div>
+                        <div class="col-md-4"><label class="form-label">Manufacturer Address (Street|City|ZIP|Country)</label>{{ edit_form.manufacturer_address }}</div>
+                        <div class="col-md-2"><label class="form-label">Item Weight (kg)</label>{{ edit_form.item_weight_kg }}</div>
+                        <div class="col-md-2"><label class="form-label">Volume Weight (kg)</label>{{ edit_form.volume_weight_kg }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Compliance</div></div>
+                        <div class="col-md-2"><label class="form-label">Russian Steel Confirmation</label>{{ edit_form.russian_steel_confirmation }}</div>
+                        <div class="col-md-1"><label class="form-label">Hazmat (Y/N)</label>{{ edit_form.hazmat }}</div>
+                        <div class="col-md-2"><label class="form-label">UN# · SDS/MSDS</label>{{ edit_form.un_sds_msds }}</div>
+                        <div class="col-md-2"><label class="form-label">Product Regulation</label>{{ edit_form.product_regulation }}</div>
+                        <div class="col-md-2"><label class="form-label">EOL Status</label>{{ edit_form.eol_status }}</div>
+                        <div class="col-md-3"><label class="form-label">Alternative Part(s)</label>{{ edit_form.alternative_parts }}</div>
+                        <div class="col-md-3"><label class="form-label">Alternative Part No</label>{{ edit_form.alternative_part_no }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">China-Specific (CN Only)</div></div>
+                        <div class="col-md-4"><label class="form-label">Mfg Address + Postal</label>{{ edit_form.mfg_address_postal_cn }}</div>
+                        <div class="col-md-2"><label class="form-label">UFLPA Compliance Statement</label>{{ edit_form.uflpa_compliance }}</div>
+                        <div class="col-md-2"><label class="form-label">UFLPA Start Date</label>{{ edit_form.uflpa_start_date }}</div>
+                        <div class="col-md-2"><label class="form-label">UFLPA Expiry Date</label>{{ edit_form.uflpa_expiry_date }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">USMCA (CA/MX Only)</div></div>
+                        <div class="col-md-2"><label class="form-label">USMCA Certificate</label>{{ edit_form.usmca_certificate }}</div>
+                        <div class="col-md-2"><label class="form-label">USMCA Start Date</label>{{ edit_form.usmca_start_date }}</div>
+                        <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ edit_form.usmca_expiry_date }}</div>
+
+                        <div class="col-12 mt-1"><div class="section-heading">Workflow</div></div>
+                        <div class="col-md-4"><label class="form-label">Status</label>{{ edit_form.status }}</div>
+                        <div class="col-md-6"><label class="form-label">Comments</label>{{ edit_form.comments }}</div>
+                    </div>
+                    <div id="editFormErrors" class="alert alert-danger mt-2 py-2 d-none"></div>
+                </form>
+            </template>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary px-4" id="editSaveBtn" disabled>
+                    <i class="bi bi-check-circle me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save feedback toast -->
+<div id="saveToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive">
+    <div class="d-flex">
+        <div class="toast-body" id="saveToastMsg"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+</div>
+
 <!-- ── Clear All Confirmation Modal ── -->
 <div class="modal fade" id="clearAllModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
@@ -379,28 +627,60 @@
     </div>
 </div>
 
+<!-- ── Long Note Modal (for big emails/comments) ── -->
+<div class="modal fade" id="longNoteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-dark text-white">
+                <h6 class="modal-title"><i class="bi bi-textarea-t me-2"></i>Full Comment / Email View</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="longNoteEditor" class="form-control" style="min-height:400px;font-family:monospace;font-size:13px;"></textarea>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-primary px-4" id="longNoteSaveBtn">
+                    <i class="bi bi-save me-1"></i>Save Note
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-// Toggle Form Entry / Bulk Upload sub-buttons
+// ── Utilities ─────────────────────────────────────────────────────
+function getCsrfToken() {
+    const c = document.cookie.split(';').find(s => s.trim().startsWith('csrftoken='));
+    return c ? c.trim().split('=')[1] : '';
+}
+
+function showToast(msg, ok) {
+    const toast = document.getElementById('saveToast');
+    toast.className = 'toast align-items-center text-white border-0 ' + (ok === false ? 'bg-danger' : 'bg-success');
+    document.getElementById('saveToastMsg').textContent = msg;
+    bootstrap.Toast.getOrCreateInstance(toast, {delay: 2200}).show();
+}
+
+// ── Toggle Form Entry / Bulk Upload sub-buttons ───────────────────
 function toggleAddButtons() {
     const sub = document.getElementById('addSubButtons');
     sub.classList.toggle('d-none');
 }
-
-// Hide sub-buttons when a modal closes
 ['addModal', 'bulkUploadModal'].forEach(function(id) {
     document.getElementById(id).addEventListener('hidden.bs.modal', function() {
         document.getElementById('addSubButtons').classList.add('d-none');
     });
 });
 
-// Wire up delete modal
+// ── Delete modal ──────────────────────────────────────────────────
 document.getElementById('deleteModal').addEventListener('show.bs.modal', function(event) {
     const btn = event.relatedTarget;
     document.getElementById('deleteLabel').textContent = btn.getAttribute('data-label');
     document.getElementById('deleteForm').action = '/delete/' + btn.getAttribute('data-pk') + '/';
 });
 
-// Show selected file names in bulk upload modal
+// ── Bulk upload file list ─────────────────────────────────────────
 document.getElementById('bulkFileInput').addEventListener('change', function() {
     const preview = document.getElementById('filePreview');
     const list = document.getElementById('fileList');
@@ -423,21 +703,381 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
     new bootstrap.Modal(document.getElementById('addModal')).show();
 {% endif %}
 
+// ── Inline dropdown AJAX save ─────────────────────────────────────
+document.querySelectorAll('.inline-select:not(.status-sel)').forEach(function(sel) {
+    sel.dataset.original = sel.value;
+    sel.addEventListener('change', function() {
+        const pk = this.dataset.pk;
+        const field = this.dataset.field;
+        const value = this.value;
+        const prev = this.dataset.original;
+        this.classList.add('is-saving');
+        fetch('/patch/' + pk + '/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+            body: JSON.stringify({ field: field, value: value }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            this.classList.remove('is-saving');
+            if (data.ok) {
+                this.dataset.original = value;
+                this.classList.add('is-saved');
+                setTimeout(() => this.classList.remove('is-saved'), 1500);
+                showToast('Saved', true);
+            } else {
+                this.value = prev;
+                showToast('Save failed', false);
+            }
+        })
+        .catch(() => {
+            this.classList.remove('is-saving');
+            this.value = prev;
+            showToast('Save failed', false);
+        });
+    });
+});
+
+// ── Status column: dropdown + free-text "Others" ────────────────
+function patchField(pk, field, value, feedbackEl) {
+    if (feedbackEl) feedbackEl.classList.add('is-saving');
+    fetch('/patch/' + pk + '/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ field: field, value: value }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (feedbackEl) feedbackEl.classList.remove('is-saving');
+        if (data.ok) {
+            if (feedbackEl) { feedbackEl.classList.add('is-saved'); setTimeout(() => feedbackEl.classList.remove('is-saved'), 1500); }
+            showToast('Saved', true);
+        } else {
+            showToast('Save failed', false);
+        }
+    })
+    .catch(() => {
+        if (feedbackEl) feedbackEl.classList.remove('is-saving');
+        showToast('Save failed', false);
+    });
+}
+
+document.querySelectorAll('.status-sel').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+        const pk = this.dataset.pk;
+        const cell = this.closest('td');
+        const inp = cell.querySelector('.status-txt');
+        if (this.value === 'Others') {
+            inp.style.display = 'block';
+            inp.focus();
+        } else {
+            inp.style.display = 'none';
+            inp.value = '';
+            patchField(pk, 'status', this.value, this);
+        }
+    });
+});
+
+document.querySelectorAll('.status-txt').forEach(function(inp) {
+    inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { 
+            e.preventDefault(); 
+            patchField(this.dataset.pk, 'status', this.value.trim(), this);
+            this.blur(); 
+        }
+    });
+});
+
+// ── Comments column: Instant save + Expansion ──────────────────
+let activeRefTextarea = null;
+
+function openLongNoteModal(textarea) {
+    activeRefTextarea = textarea;
+    document.getElementById('longNoteEditor').value = textarea.value;
+    new bootstrap.Modal(document.getElementById('longNoteModal')).show();
+}
+
+document.getElementById('longNoteSaveBtn').addEventListener('click', function() {
+    if (!activeRefTextarea) return;
+    const val = document.getElementById('longNoteEditor').value;
+    activeRefTextarea.value = val;
+    patchField(activeRefTextarea.dataset.pk, 'comments', val.trim(), activeRefTextarea);
+    bootstrap.Modal.getInstance(document.getElementById('longNoteModal')).hide();
+});
+
+document.querySelectorAll('.comments-txt').forEach(function(txt) {
+    // Instant save on blur
+    txt.addEventListener('blur', function() {
+        // If it's focused, it might be in "float" mode. 
+        // We only save if the value changed.
+        patchField(this.dataset.pk, 'comments', this.value.trim(), this);
+    });
+
+    // Handle expansion height if needed
+    txt.addEventListener('input', function() {
+        if (this === document.activeElement) {
+            this.style.height = 'auto';
+            const newH = Math.min(this.scrollHeight, 300);
+            this.style.height = newH + 'px';
+        }
+    });
+});
+
+// ── Edit modal ────────────────────────────────────────────────────
+var _editRow = null;
+var _editPk  = null;
+
+const MONTHS = ['Jan.','Feb.','March','April','May','June','July','Aug.','Sept.','Oct.','Nov.','Dec.'];
+function fmtDate(iso) {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-').map(Number);
+    return MONTHS[m - 1] + ' ' + d + ', ' + y;
+}
+function truncate(s, n) {
+    if (!s) return '—';
+    return s.length > n ? s.substring(0, n - 1) + '…' : s;
+}
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function openEditModal(pk, rowEl) {
+    _editPk  = pk;
+    _editRow = rowEl;
+    const modalEl = document.getElementById('editModal');
+    const body    = document.getElementById('editModalBody');
+    const saveBtn = document.getElementById('editSaveBtn');
+    document.getElementById('editModalTitle').textContent = 'Edit Entry';
+    body.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted small">Loading…</p></div>';
+    saveBtn.disabled = true;
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    fetch('/edit-json/' + pk + '/', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.ok) { body.innerHTML = '<p class="text-danger p-3">Failed to load entry.</p>'; return; }
+        const e = data.entry;
+        document.getElementById('editModalTitle').textContent =
+            'Edit — ' + (e.supplier_name || '') + ' / ' + (e.part_no || '');
+        // Clone the pre-rendered form template
+        const tpl = document.getElementById('editFormTpl');
+        body.innerHTML = '';
+        body.appendChild(tpl.content.cloneNode(true));
+        populateEditForm(e);
+        saveBtn.disabled = false;
+    })
+    .catch(() => {
+        body.innerHTML = '<p class="text-danger p-3">Network error loading entry.</p>';
+    });
+}
+
+function populateEditForm(e) {
+    function set(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.value = val || '';
+    }
+    set('id_edit-supplier_code',           e.supplier_code);
+    set('id_edit-supplier_name',           e.supplier_name);
+    set('id_edit-part_no',                 e.part_no);
+    set('id_edit-part_description',        e.part_description);
+    set('id_edit-order_qty',               e.order_qty);
+    set('id_edit-uom',                     e.uom);
+    set('id_edit-unit_price',              e.unit_price);
+    set('id_edit-currency',               e.currency);
+    set('id_edit-pic',                     e.pic);
+    set('id_edit-contact_email',           e.contact_email);
+    set('id_edit-contact_secondary_email', e.contact_secondary_email);
+    set('id_edit-lead_time_days',          e.lead_time_days);
+    set('id_edit-ship_lead_time_days',     e.ship_lead_time_days);
+    set('id_edit-quote_uom',              e.quote_uom);
+    set('id_edit-coo',                     e.coo);
+    set('id_edit-quote_currency',          e.quote_currency);
+    set('id_edit-unit_price_1',            e.unit_price_1);
+    set('id_edit-moq_1',                   e.moq_1);
+    set('id_edit-unit_price_2',            e.unit_price_2);
+    set('id_edit-moq_2',                   e.moq_2);
+    set('id_edit-unit_price_3',            e.unit_price_3);
+    set('id_edit-moq_3',                   e.moq_3);
+    set('id_edit-lot_size',                e.lot_size);
+    set('id_edit-hts_code',               e.hts_code);
+    set('id_edit-eccn_ear99',              e.eccn_ear99);
+    set('id_edit-manufacture_part_number', e.manufacture_part_number);
+    set('id_edit-manufacturer_name',       e.manufacturer_name);
+    set('id_edit-manufacturer_address',    e.manufacturer_address);
+    set('id_edit-item_weight_kg',          e.item_weight_kg);
+    set('id_edit-volume_weight_kg',        e.volume_weight_kg);
+    set('id_edit-russian_steel_confirmation', e.russian_steel_confirmation);
+    set('id_edit-hazmat',                  e.hazmat);
+    set('id_edit-un_sds_msds',             e.un_sds_msds);
+    set('id_edit-product_regulation',      e.product_regulation);
+    set('id_edit-eol_status',              e.eol_status);
+    set('id_edit-alternative_parts',       e.alternative_parts);
+    set('id_edit-alternative_part_no',     e.alternative_part_no);
+    set('id_edit-mfg_address_postal_cn',   e.mfg_address_postal_cn);
+    set('id_edit-uflpa_compliance',        e.uflpa_compliance);
+    set('id_edit-uflpa_start_date',        e.uflpa_start_date);
+    set('id_edit-uflpa_expiry_date',       e.uflpa_expiry_date);
+    set('id_edit-usmca_certificate',       e.usmca_certificate);
+    set('id_edit-usmca_start_date',        e.usmca_start_date);
+    set('id_edit-usmca_expiry_date',       e.usmca_expiry_date);
+    set('id_edit-comments',               e.comments);
+}
+
+function updateRowFromEntry(row, e) {
+    const c = row.cells;
+    function txt(idx, val)  { c[idx].textContent = val || '—'; }
+    function trunc(idx, val, n) { c[idx].textContent = truncate(val, n); c[idx].title = val || ''; }
+    function email(idx, val) {
+        c[idx].innerHTML = val ? '<a href="mailto:' + escHtml(val) + '">' + escHtml(val) + '</a>' : '—';
+    }
+    function ddrop(idx, field) {
+        const sel = c[idx].querySelector('select.inline-select');
+        if (sel) { sel.value = e[field] || ''; sel.dataset.original = e[field] || ''; }
+    }
+
+    txt(1,  e.supplier_code);
+    txt(2,  e.supplier_name);
+    txt(3,  e.part_no);
+    trunc(4, e.part_description, 30);
+    txt(5,  e.order_qty);
+    txt(6,  e.uom);
+    txt(7,  e.unit_price);
+    txt(8,  e.currency);
+    txt(9,  e.pic);
+    email(10, e.contact_email);
+    email(11, e.contact_secondary_email);
+    txt(12, e.lead_time_days);
+    txt(13, e.ship_lead_time_days);
+    txt(14, e.quote_uom);
+    txt(15, e.coo);
+    txt(16, e.quote_currency);
+    txt(17, e.unit_price_1);
+    txt(18, e.moq_1);
+    txt(19, e.unit_price_2);
+    txt(20, e.moq_2);
+    txt(21, e.unit_price_3);
+    txt(22, e.moq_3);
+    txt(23, e.lot_size);
+    txt(24, e.hts_code);
+    txt(25, e.eccn_ear99);
+    txt(26, e.manufacture_part_number);
+    txt(27, e.manufacturer_name);
+    trunc(28, e.manufacturer_address, 30);
+    txt(29, e.item_weight_kg);
+    txt(30, e.volume_weight_kg);
+    ddrop(31, 'russian_steel_confirmation');
+    ddrop(32, 'hazmat');
+    ddrop(33, 'un_sds_msds');
+    ddrop(34, 'product_regulation');
+    ddrop(35, 'eol_status');
+    trunc(36, e.alternative_parts, 25);
+    txt(37, e.alternative_part_no);
+    trunc(38, e.mfg_address_postal_cn, 25);
+    ddrop(39, 'uflpa_compliance');
+    c[40].textContent = fmtDate(e.uflpa_start_date);
+    c[41].textContent = fmtDate(e.uflpa_expiry_date);
+    ddrop(42, 'usmca_certificate');
+    c[43].textContent = fmtDate(e.usmca_start_date);
+    c[44].textContent = fmtDate(e.usmca_expiry_date);
+    // col 45: Status
+    (function() {
+        const FIXED = ['No Response Yet', 'Partially Data Received', 'Completed'];
+        const sel = c[45].querySelector('.status-sel');
+        const inp = c[45].querySelector('.status-txt');
+        const val = e.status || '';
+        if (!val || FIXED.includes(val)) {
+            if (sel) sel.value = val;
+            if (inp) { inp.style.display = 'none'; inp.value = ''; }
+        } else {
+            if (sel) sel.value = 'Others';
+            if (inp) { inp.value = val; inp.style.display = 'block'; }
+        }
+    })();
+    // col 46: Comments (free text)
+    if (c[46].querySelector('.comments-txt')) {
+        c[46].querySelector('.comments-txt').value = e.comments || '';
+    }
+}
+
+// Save button triggers form submit
+document.getElementById('editSaveBtn').addEventListener('click', function() {
+    const form = document.getElementById('editForm');
+    if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+});
+
+// Delegate edit form submit (form is cloned into modal body dynamically)
+document.getElementById('editModalBody').addEventListener('submit', function(evt) {
+    if (evt.target.id !== 'editForm') return;
+    evt.preventDefault();
+    const saveBtn = document.getElementById('editSaveBtn');
+    const errBox  = document.getElementById('editFormErrors');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+
+    const fd = new FormData(evt.target);
+    fetch('/edit-json/' + _editPk + '/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Save Changes';
+        if (data.ok) {
+            if (errBox) errBox.classList.add('d-none');
+            bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+            updateRowFromEntry(_editRow, data.entry);
+            showToast('Entry updated', true);
+        } else {
+            const msgs = Object.values(data.errors || {}).flat().join(' | ');
+            if (errBox) { errBox.textContent = msgs; errBox.classList.remove('d-none'); }
+        }
+    })
+    .catch(() => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Save Changes';
+        showToast('Network error', false);
+    });
+});
+
 // ── Client-side Pagination & Search ──────────────────────────────
 (function() {
     const table = document.querySelector('.rfq-table tbody');
-    const allRows = Array.from(table.querySelectorAll('tr:not(:last-child)'));  // exclude empty-state row
+    const allRows = Array.from(table.querySelectorAll('tr:not(:last-child)'));
     const emptyRow = table.querySelector('tr:last-child');
     const sizeSelect = document.getElementById('pageSizeSelect');
     const searchInput = document.getElementById('tableSearch');
     const pageInfo = document.getElementById('pageInfo');
     const pageNavTop = document.getElementById('pageNav');
     const pageNavBottom = document.getElementById('pageNavBottom');
-    
+
     let filteredRows = allRows;
     let currentPage = 1;
     let pageSize = 20;
     let currentSort = { col: -1, asc: true };
+
+    // Get cell sort/search text, handling inline-select, status, and comments cells
+    function cellText(cell) {
+        // Status cell
+        const statTxt = cell.querySelector('.status-txt');
+        if (statTxt && statTxt.style.display !== 'none') return statTxt.value.trim().toLowerCase();
+        
+        // Comments cell
+        const commTxt = cell.querySelector('.comments-txt');
+        if (commTxt) return commTxt.value.trim().toLowerCase();
+
+        const sel = cell.querySelector('select.inline-select');
+        if (sel) return (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '').trim().toLowerCase();
+        return cell.textContent.trim().toLowerCase();
+    }
+
+    function rowSearchText(row) {
+        return Array.from(row.cells).map(cellText).join(' ');
+    }
 
     function totalPages() {
         if (pageSize === 'all') return 1;
@@ -450,10 +1090,7 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         if (currentPage > tp) currentPage = tp;
         if (currentPage < 1) currentPage = 1;
 
-        // Hide ALL rows first
         allRows.forEach(r => r.style.display = 'none');
-
-        // Show only the ones for current page
         filteredRows.forEach(function(row, i) {
             if (pageSize === 'all') {
                 row.style.display = '';
@@ -464,12 +1101,8 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
             }
         });
 
-        // Toggle empty row visibility
-        if (emptyRow) {
-            emptyRow.style.display = (total === 0) ? '' : 'none';
-        }
+        if (emptyRow) emptyRow.style.display = (total === 0) ? '' : 'none';
 
-        // Page info
         if (total === 0) {
             pageInfo.textContent = 'No results found';
         } else if (pageSize === 'all') {
@@ -477,10 +1110,10 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         } else {
             const start = (currentPage - 1) * pageSize + 1;
             const end = Math.min(currentPage * pageSize, total);
-            pageInfo.textContent = 'Showing ' + start + '–' + end + ' of ' + total + (filteredRows.length < allRows.length ? ' entries (filtered)' : ' entries');
+            pageInfo.textContent = 'Showing ' + start + '–' + end + ' of ' + total +
+                (filteredRows.length < allRows.length ? ' entries (filtered)' : ' entries');
         }
 
-        // Build navigation
         buildNav(pageNavTop, tp);
         buildNav(pageNavBottom, tp);
     }
@@ -493,20 +1126,17 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
             currentSort.asc = true;
         }
 
-        // Update header UI
         document.querySelectorAll('.rfq-table th.sortable').forEach((th, i) => {
             th.classList.remove('asc', 'desc');
             if (i === colIdx) th.classList.add(currentSort.asc ? 'asc' : 'desc');
         });
 
         filteredRows.sort((a, b) => {
-            let valA = a.cells[colIdx].textContent.trim().toLowerCase();
-            let valB = b.cells[colIdx].textContent.trim().toLowerCase();
-            
-            // Handle numeric sorting
-            let numA = parseFloat(valA.replace(/[^0-9.-]+/g,""));
-            let numB = parseFloat(valB.replace(/[^0-9.-]+/g,""));
-            
+            let valA = cellText(a.cells[colIdx]);
+            let valB = cellText(b.cells[colIdx]);
+
+            let numA = parseFloat(valA.replace(/[^0-9.-]+/g, ''));
+            let numB = parseFloat(valB.replace(/[^0-9.-]+/g, ''));
             if (!isNaN(numA) && !isNaN(numB) && valA.match(/^[0-9,.-]+$/)) {
                 return currentSort.asc ? numA - numB : numB - numA;
             }
@@ -576,14 +1206,11 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         if (!query) {
             filteredRows = [...allRows];
         } else {
-            filteredRows = allRows.filter(row => {
-                return row.textContent.toLowerCase().includes(query);
-            });
+            filteredRows = allRows.filter(row => rowSearchText(row).includes(query));
         }
-        // Preserve sort if active
         if (currentSort.col !== -1) {
             const saveCol = currentSort.col;
-            currentSort.col = -1; // reset to force re-sort
+            currentSort.col = -1;
             sort(saveCol);
         } else {
             currentPage = 1;

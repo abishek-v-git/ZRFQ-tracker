@@ -51,25 +51,57 @@
             margin-bottom: 10px;
         }
 
-        /* Sticky Last Column (Actions) */
-        table.rfq-table th:last-child,
+        /* Sticky Right Columns (Status, Comments, Actions) */
+        /* 1. Set fixed widths so offsets are predictable */
+        table.rfq-table th:last-child, 
         table.rfq-table td:last-child {
-            position: sticky;
-            right: 0;
-            border-left: 1px solid #dee2e6;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+            width: 80px; min-width: 80px; right: 0; z-index: 6;
         }
-        table.rfq-table th:last-child {
-            z-index: 10; /* Above regular sticky header (z-index 2) */
+        
+        table.rfq-table th:nth-last-child(2),
+        table.rfq-table td:nth-last-child(2) {
+            width: 200px; min-width: 200px; right: 80px; z-index: 5;
+            border-left: 1px solid #dee2e6;
+        }
+
+        table.rfq-table th:nth-last-child(3),
+        table.rfq-table td:nth-last-child(3) {
+            width: 140px; min-width: 140px; right: 280px; z-index: 4;
+            border-left: 1px solid #dee2e6;
+        }
+
+        table.rfq-table th:last-child,
+        table.rfq-table td:last-child,
+        table.rfq-table th:nth-last-child(2),
+        table.rfq-table td:nth-last-child(2),
+        table.rfq-table th:nth-last-child(3),
+        table.rfq-table td:nth-last-child(3) {
+            position: sticky;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.03);
+        }
+
+        /* Header z-index and backgrounds */
+        table.rfq-table th:last-child,
+        table.rfq-table th:nth-last-child(2),
+        table.rfq-table th:nth-last-child(3) {
+            z-index: 10;
             background: #003366 !important;
         }
-        table.rfq-table td:last-child {
-            z-index: 5;
+
+        /* Cell backgrounds */
+        table.rfq-table td:last-child,
+        table.rfq-table td:nth-last-child(2),
+        table.rfq-table td:nth-last-child(3) {
             background: #fff;
         }
-        table.rfq-table tbody tr:hover td:last-child {
+
+        /* Hover states */
+        table.rfq-table tbody tr:hover td:last-child,
+        table.rfq-table tbody tr:hover td:nth-last-child(2),
+        table.rfq-table tbody tr:hover td:nth-last-child(3) {
             background: #eef3fb;
         }
+
         /* Handle z-index for the highlighted MFR column so it doesn't overlap sticky actions */
         .col-mfr-pn { position: relative; z-index: 1; }
     </style>

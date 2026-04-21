@@ -81,4 +81,10 @@ class RFQEntryForm(forms.ModelForm):
             ]),
             'usmca_start_date':          forms.DateInput(attrs=_date()),
             'usmca_expiry_date':         forms.DateInput(attrs=_date()),
+            'status': forms.Select(attrs=_sel(), choices=[
+                ('', '—'), ('No Response Yet', 'No Response Yet'), 
+                ('Partially Data Received', 'Partially Data Received'), 
+                ('Completed', 'Completed'), ('Others', 'Others'),
+            ]),
+            'comments':                  forms.Textarea(attrs=_area(2)),
         }

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from .models import RFQEntry
 from .forms import RFQEntryForm
 
@@ -9,6 +9,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 import datetime
+import json
 import re
 
 # Maps Excel column headers → model field names
@@ -163,11 +164,66 @@ def _coerce(field, value):
     return str(value).strip()
 
 
+def _entry_to_dict(entry):
+    def fd(d): return d.isoformat() if d else ''
+    def fn(v): return str(v) if v is not None else ''
+    return {
+        'pk': entry.pk,
+        'supplier_code': entry.supplier_code or '',
+        'supplier_name': entry.supplier_name or '',
+        'part_no': entry.part_no or '',
+        'part_description': entry.part_description or '',
+        'order_qty': fn(entry.order_qty),
+        'uom': entry.uom or '',
+        'unit_price': fn(entry.unit_price),
+        'currency': entry.currency or '',
+        'pic': entry.pic or '',
+        'contact_email': entry.contact_email or '',
+        'contact_secondary_email': entry.contact_secondary_email or '',
+        'lead_time_days': fn(entry.lead_time_days),
+        'ship_lead_time_days': fn(entry.ship_lead_time_days),
+        'quote_uom': entry.quote_uom or '',
+        'coo': entry.coo or '',
+        'quote_currency': entry.quote_currency or '',
+        'unit_price_1': fn(entry.unit_price_1),
+        'moq_1': fn(entry.moq_1),
+        'unit_price_2': fn(entry.unit_price_2),
+        'moq_2': fn(entry.moq_2),
+        'unit_price_3': fn(entry.unit_price_3),
+        'moq_3': fn(entry.moq_3),
+        'lot_size': fn(entry.lot_size),
+        'hts_code': entry.hts_code or '',
+        'eccn_ear99': entry.eccn_ear99 or '',
+        'manufacture_part_number': entry.manufacture_part_number or '',
+        'manufacturer_name': entry.manufacturer_name or '',
+        'manufacturer_address': entry.manufacturer_address or '',
+        'item_weight_kg': fn(entry.item_weight_kg),
+        'volume_weight_kg': fn(entry.volume_weight_kg),
+        'russian_steel_confirmation': entry.russian_steel_confirmation or '',
+        'hazmat': entry.hazmat or '',
+        'un_sds_msds': entry.un_sds_msds or '',
+        'product_regulation': entry.product_regulation or '',
+        'eol_status': entry.eol_status or '',
+        'alternative_parts': entry.alternative_parts or '',
+        'alternative_part_no': entry.alternative_part_no or '',
+        'mfg_address_postal_cn': entry.mfg_address_postal_cn or '',
+        'uflpa_compliance': entry.uflpa_compliance or '',
+        'uflpa_start_date': fd(entry.uflpa_start_date),
+        'uflpa_expiry_date': fd(entry.uflpa_expiry_date),
+        'usmca_certificate': entry.usmca_certificate or '',
+        'usmca_start_date': fd(entry.usmca_start_date),
+        'usmca_expiry_date': fd(entry.usmca_expiry_date),
+        'status': entry.status or '',
+        'comments': entry.comments or '',
+    }
+
+
 @login_required
 def rfq_list(request):
     entries = RFQEntry.objects.all()
     form = RFQEntryForm()
-    return render(request, 'tracker/rfq_list.html', {'entries': entries, 'form': form})
+    edit_form = RFQEntryForm(prefix='edit')
+    return render(request, 'tracker/rfq_list.html', {'entries': entries, 'form': form, 'edit_form': edit_form})
 
 
 @login_required
@@ -411,3 +467,41 @@ def rfq_clear_all(request):
         count, _ = RFQEntry.objects.all().delete()
         messages.success(request, f'All data cleared — {count} record(s) deleted.')
     return redirect('rfq_list')
+
+
+@login_required
+def rfq_patch(request, pk):
+    """Inline-update a single dropdown field via AJAX."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    entry = get_object_or_404(RFQEntry, pk=pk)
+    try:
+        data = json.loads(request.body)
+        field = data.get('field', '')
+        value = data.get('value', '')
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
+    PATCHABLE = {
+        'russian_steel_confirmation', 'hazmat', 'un_sds_msds',
+        'product_regulation', 'eol_status', 'uflpa_compliance', 'usmca_certificate',
+        'status', 'comments',
+    }
+    if field not in PATCHABLE:
+        return JsonResponse({'ok': False, 'error': 'Field not allowed'}, status=400)
+    setattr(entry, field, value)
+    entry.save(update_fields=[field])
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def rfq_edit_json(request, pk):
+    """Load (GET) or save (POST) an entry via AJAX — used by the edit modal."""
+    entry = get_object_or_404(RFQEntry, pk=pk)
+    if request.method == 'POST':
+        form = RFQEntryForm(request.POST, instance=entry, prefix='edit')
+        if form.is_valid():
+            saved = form.save()
+            return JsonResponse({'ok': True, 'entry': _entry_to_dict(saved)})
+        errors = {k: [str(e) for e in v] for k, v in form.errors.items()}
+        return JsonResponse({'ok': False, 'errors': errors}, status=400)
+    return JsonResponse({'ok': True, 'entry': _entry_to_dict(entry)})
