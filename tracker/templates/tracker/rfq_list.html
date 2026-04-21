@@ -1,0 +1,524 @@
+{% extends "tracker/base.html" %}
+{% block content %}
+
+<!-- Top Action Bar -->
+<div class="d-flex align-items-center gap-2 mb-3">
+    <button class="btn btn-primary btn-sm" id="toggleAddBtn" onclick="toggleAddButtons()">
+        <i class="bi bi-plus-lg me-1"></i>Add New Item
+    </button>
+
+    <!-- Sub-buttons, hidden until Add New Item is clicked -->
+    <div id="addSubButtons" class="d-none d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+            <i class="bi bi-ui-checks me-1"></i>Form Entry
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
+            <i class="bi bi-upload me-1"></i>Bulk Upload
+        </button>
+    </div>
+
+    <a href="{% url 'rfq_export' %}" class="btn btn-success btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
+    </a>
+    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#clearAllModal"
+            {% if not entries.count %}disabled{% endif %}>
+        <i class="bi bi-trash3 me-1"></i>Clear All Data
+    </button>
+    <span class="ms-auto text-muted" style="font-size:12px;">{{ entries.count }} entr{{ entries.count|pluralize:"y,ies" }}</span>
+</div>
+
+<!-- Pagination Controls (top) -->
+<div class="d-flex align-items-center gap-3 mb-2" style="font-size:13px;">
+    <div class="d-flex align-items-center gap-1">
+        <label for="pageSizeSelect" class="text-muted mb-0">Show</label>
+        <select id="pageSizeSelect" class="form-select form-select-sm" style="width:70px;">
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="all">All</option>
+        </select>
+        <span class="text-muted">rows</span>
+    </div>
+    <span id="pageInfo" class="text-muted"></span>
+    <div class="ms-auto d-flex align-items-center gap-1" id="pageNav"></div>
+</div>
+
+<!-- RFQ Table -->
+<div class="form-section p-2">
+    <div class="table-wrapper">
+        <table class="table table-bordered table-hover rfq-table mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Supplier Code</th>
+                    <th>Supplier Name</th>
+                    <th>Part No</th>
+                    <th>Part Description</th>
+                    <th>Order Qty</th>
+                    <th>UOM</th>
+                    <th>Unit Price</th>
+                    <th>Currency</th>
+                    <th>PIC</th>
+                    <th>Contact Email</th>
+                    <th>Contact Secondary Email</th>
+                    <th>Lead Time (days)</th>
+                    <th>Ship Lead Time (days)</th>
+                    <th>UOM</th>
+                    <th>COO</th>
+                    <th>Currency</th>
+                    <th>Unit Price 1</th>
+                    <th>MOQ-1</th>
+                    <th>Unit Price 2</th>
+                    <th>MOQ-2</th>
+                    <th>Unit Price 3</th>
+                    <th>MOQ-3</th>
+                    <th>Lot Size</th>
+                    <th>HTS Code</th>
+                    <th>ECCN/EAR99</th>
+                    <th>Manufacture Part Number</th>
+                    <th>Manufacturer Name</th>
+                    <th>Manufacturer Address</th>
+                    <th>Item Weight (kg)</th>
+                    <th>Volume Weight (kg)</th>
+                    <th>Russian Steel Confirmation</th>
+                    <th>Hazmat (Y/N)</th>
+                    <th>UN# · SDS/MSDS</th>
+                    <th>Product Regulation</th>
+                    <th>EOL Status</th>
+                    <th>Alternative Part(s)</th>
+                    <th>Alternative Part No</th>
+                    <th>Mfg Address + Postal (CN Only)</th>
+                    <th>UFLPA Compliance (CN Only)</th>
+                    <th>UFLPA Start Date</th>
+                    <th>UFLPA Expiry Date</th>
+                    <th>USMCA Certificate (CA/MX Only)</th>
+                    <th>USMCA Start Date</th>
+                    <th>USMCA Expiry Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in entries %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ e.supplier_code }}</td>
+                    <td>{{ e.supplier_name }}</td>
+                    <td>{{ e.part_no }}</td>
+                    <td title="{{ e.part_description }}">{{ e.part_description|truncatechars:30|default:"—" }}</td>
+                    <td>{{ e.order_qty|default:"—" }}</td>
+                    <td>{{ e.uom|default:"—" }}</td>
+                    <td>{{ e.unit_price|default:"—" }}</td>
+                    <td>{{ e.currency|default:"—" }}</td>
+                    <td>{{ e.pic|default:"—" }}</td>
+                    <td>{% if e.contact_email %}<a href="mailto:{{ e.contact_email }}">{{ e.contact_email }}</a>{% else %}—{% endif %}</td>
+                    <td>{% if e.contact_secondary_email %}<a href="mailto:{{ e.contact_secondary_email }}">{{ e.contact_secondary_email }}</a>{% else %}—{% endif %}</td>
+                    <td>{{ e.lead_time_days|default:"—" }}</td>
+                    <td>{{ e.ship_lead_time_days|default:"—" }}</td>
+                    <td>{{ e.quote_uom|default:"—" }}</td>
+                    <td>{{ e.coo|default:"—" }}</td>
+                    <td>{{ e.quote_currency|default:"—" }}</td>
+                    <td>{{ e.unit_price_1|default:"—" }}</td>
+                    <td>{{ e.moq_1|default:"—" }}</td>
+                    <td>{{ e.unit_price_2|default:"—" }}</td>
+                    <td>{{ e.moq_2|default:"—" }}</td>
+                    <td>{{ e.unit_price_3|default:"—" }}</td>
+                    <td>{{ e.moq_3|default:"—" }}</td>
+                    <td>{{ e.lot_size|default:"—" }}</td>
+                    <td>{{ e.hts_code|default:"—" }}</td>
+                    <td>{{ e.eccn_ear99|default:"—" }}</td>
+                    <td class="col-mfr-pn">{{ e.manufacture_part_number|default:"—" }}</td>
+                    <td>{{ e.manufacturer_name|default:"—" }}</td>
+                    <td title="{{ e.manufacturer_address }}">{{ e.manufacturer_address|truncatechars:30|default:"—" }}</td>
+                    <td>{{ e.item_weight_kg|default:"—" }}</td>
+                    <td>{{ e.volume_weight_kg|default:"—" }}</td>
+                    <td>{{ e.russian_steel_confirmation|default:"—" }}</td>
+                    <td>{{ e.hazmat|default:"—" }}</td>
+                    <td>{{ e.un_sds_msds|default:"—" }}</td>
+                    <td>{{ e.product_regulation|default:"—" }}</td>
+                    <td>{{ e.eol_status|default:"—" }}</td>
+                    <td title="{{ e.alternative_parts }}">{{ e.alternative_parts|truncatechars:25|default:"—" }}</td>
+                    <td>{{ e.alternative_part_no|default:"—" }}</td>
+                    <td title="{{ e.mfg_address_postal_cn }}">{{ e.mfg_address_postal_cn|truncatechars:25|default:"—" }}</td>
+                    <td>{{ e.uflpa_compliance|default:"—" }}</td>
+                    <td>{{ e.uflpa_start_date|default:"—" }}</td>
+                    <td>{{ e.uflpa_expiry_date|default:"—" }}</td>
+                    <td>{{ e.usmca_certificate|default:"—" }}</td>
+                    <td>{{ e.usmca_start_date|default:"—" }}</td>
+                    <td>{{ e.usmca_expiry_date|default:"—" }}</td>
+                    <td class="text-nowrap">
+                        <a href="{% url 'rfq_edit' e.pk %}" class="btn btn-sm btn-outline-primary btn-action me-1">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button type="button"
+                            class="btn btn-sm btn-outline-danger btn-action"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteModal"
+                            data-pk="{{ e.pk }}"
+                            data-label="{{ e.supplier_name }} — {{ e.part_no }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="46" class="text-center text-muted py-5">
+                        No entries yet. Click <strong>+ Add New Item</strong> to get started.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination Controls (bottom) -->
+<div class="d-flex align-items-center justify-content-end gap-1 mt-2 mb-3" id="pageNavBottom" style="font-size:13px;"></div>
+
+<!-- ── Add New Item Modal ── -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background:#003366;">
+                <h6 class="modal-title text-white"><i class="bi bi-plus-circle me-2"></i>Add New RFQ Entry</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" action="{% url 'rfq_add' %}" id="addForm">
+                    {% csrf_token %}
+                    <div class="row g-2">
+
+                        <!-- SUPPLIER -->
+                        <div class="col-12"><div class="section-heading">Supplier</div></div>
+                        <div class="col-md-2"><label class="form-label">Supplier Code *</label>{{ form.supplier_code }}</div>
+                        <div class="col-md-3"><label class="form-label">Supplier Name *</label>{{ form.supplier_name }}</div>
+                        <div class="col-md-2"><label class="form-label">PIC</label>{{ form.pic }}</div>
+                        <div class="col-md-2"><label class="form-label">Contact Email</label>{{ form.contact_email }}</div>
+                        <div class="col-md-3"><label class="form-label">Contact Secondary Email</label>{{ form.contact_secondary_email }}</div>
+
+                        <!-- PART -->
+                        <div class="col-12 mt-1"><div class="section-heading">Part</div></div>
+                        <div class="col-md-2"><label class="form-label">Part No *</label>{{ form.part_no }}</div>
+                        <div class="col-md-4"><label class="form-label">Part Description</label>{{ form.part_description }}</div>
+                        <div class="col-md-1"><label class="form-label">Order Qty</label>{{ form.order_qty }}</div>
+                        <div class="col-md-1"><label class="form-label">UOM</label>{{ form.uom }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price</label>{{ form.unit_price }}</div>
+                        <div class="col-md-1"><label class="form-label">Currency</label>{{ form.currency }}</div>
+
+                        <!-- LEAD TIMES -->
+                        <div class="col-12 mt-1"><div class="section-heading">Lead Times</div></div>
+                        <div class="col-md-2"><label class="form-label">Lead Time (days)</label>{{ form.lead_time_days }}</div>
+                        <div class="col-md-2"><label class="form-label">Ship Lead Time (days)</label>{{ form.ship_lead_time_days }}</div>
+
+                        <!-- QUOTE DETAILS -->
+                        <div class="col-12 mt-1"><div class="section-heading">Quote Details</div></div>
+                        <div class="col-md-1"><label class="form-label">UOM</label>{{ form.quote_uom }}</div>
+                        <div class="col-md-2"><label class="form-label">COO</label>{{ form.coo }}</div>
+                        <div class="col-md-1"><label class="form-label">Currency</label>{{ form.quote_currency }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price 1</label>{{ form.unit_price_1 }}</div>
+                        <div class="col-md-1"><label class="form-label">MOQ-1</label>{{ form.moq_1 }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price 2</label>{{ form.unit_price_2 }}</div>
+                        <div class="col-md-1"><label class="form-label">MOQ-2</label>{{ form.moq_2 }}</div>
+                        <div class="col-md-2"><label class="form-label">Unit Price 3</label>{{ form.unit_price_3 }}</div>
+                        <div class="col-md-1"><label class="form-label">MOQ-3</label>{{ form.moq_3 }}</div>
+                        <div class="col-md-1"><label class="form-label">Lot Size</label>{{ form.lot_size }}</div>
+
+                        <!-- PRODUCT CODES -->
+                        <div class="col-12 mt-1"><div class="section-heading">Product Codes</div></div>
+                        <div class="col-md-2"><label class="form-label">HTS Code</label>{{ form.hts_code }}</div>
+                        <div class="col-md-2"><label class="form-label">ECCN/EAR99</label>{{ form.eccn_ear99 }}</div>
+
+                        <!-- MANUFACTURER -->
+                        <div class="col-12 mt-1"><div class="section-heading">Manufacturer</div></div>
+                        <div class="col-md-2"><label class="form-label">Manufacture Part Number</label>{{ form.manufacture_part_number }}</div>
+                        <div class="col-md-2"><label class="form-label">Manufacturer Name</label>{{ form.manufacturer_name }}</div>
+                        <div class="col-md-4"><label class="form-label">Manufacturer Address (Street|City|ZIP|Country)</label>{{ form.manufacturer_address }}</div>
+                        <div class="col-md-2"><label class="form-label">Item Weight (kg)</label>{{ form.item_weight_kg }}</div>
+                        <div class="col-md-2"><label class="form-label">Volume Weight (kg)</label>{{ form.volume_weight_kg }}</div>
+
+                        <!-- COMPLIANCE -->
+                        <div class="col-12 mt-1"><div class="section-heading">Compliance</div></div>
+                        <div class="col-md-2"><label class="form-label">Russian Steel Confirmation</label>{{ form.russian_steel_confirmation }}</div>
+                        <div class="col-md-1"><label class="form-label">Hazmat (Y/N)</label>{{ form.hazmat }}</div>
+                        <div class="col-md-2"><label class="form-label">UN# · SDS/MSDS</label>{{ form.un_sds_msds }}</div>
+                        <div class="col-md-2"><label class="form-label">Product Regulation</label>{{ form.product_regulation }}</div>
+                        <div class="col-md-2"><label class="form-label">EOL Status</label>{{ form.eol_status }}</div>
+                        <div class="col-md-3"><label class="form-label">Alternative Part(s)</label>{{ form.alternative_parts }}</div>
+                        <div class="col-md-3"><label class="form-label">Alternative Part No</label>{{ form.alternative_part_no }}</div>
+
+                        <!-- CN ONLY -->
+                        <div class="col-12 mt-1"><div class="section-heading">China-Specific (CN Only)</div></div>
+                        <div class="col-md-4"><label class="form-label">Mfg Address + Postal</label>{{ form.mfg_address_postal_cn }}</div>
+                        <div class="col-md-2"><label class="form-label">UFLPA Compliance Statement</label>{{ form.uflpa_compliance }}</div>
+                        <div class="col-md-2"><label class="form-label">UFLPA Start Date</label>{{ form.uflpa_start_date }}</div>
+                        <div class="col-md-2"><label class="form-label">UFLPA Expiry Date</label>{{ form.uflpa_expiry_date }}</div>
+
+                        <!-- USMCA -->
+                        <div class="col-12 mt-1"><div class="section-heading">USMCA (CA/MX Only)</div></div>
+                        <div class="col-md-2"><label class="form-label">USMCA Certificate</label>{{ form.usmca_certificate }}</div>
+                        <div class="col-md-2"><label class="form-label">USMCA Start Date</label>{{ form.usmca_start_date }}</div>
+                        <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ form.usmca_expiry_date }}</div>
+
+                    </div>
+                    {% if form.errors %}
+                        <div class="alert alert-danger mt-2 py-2">
+                            <strong>Errors:</strong> {{ form.errors }}
+                        </div>
+                    {% endif %}
+                </form>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addForm" class="btn btn-sm btn-primary px-4">
+                    <i class="bi bi-plus-circle me-1"></i>Add Entry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Bulk Upload Modal ── -->
+<div class="modal fade" id="bulkUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background:#003366;">
+                <h6 class="modal-title text-white"><i class="bi bi-upload me-2"></i>Bulk Upload from Excel</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'rfq_bulk_upload' %}" enctype="multipart/form-data" id="bulkForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p class="text-muted mb-3" style="font-size:13px;">
+                        Upload one or more <strong>.xlsx</strong> files. Each file must have a header row
+                        matching the tracker column names. All data rows will be added to the table.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Excel file(s)</label>
+                        <input type="file" class="form-control" name="excel_files"
+                               accept=".xlsx" multiple required id="bulkFileInput">
+                    </div>
+                    <!-- File list preview -->
+                    <div id="filePreview" class="d-none">
+                        <p class="form-label fw-bold mb-1">Files selected:</p>
+                        <ul id="fileList" class="list-group list-group-flush" style="font-size:13px;"></ul>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary px-4">
+                        <i class="bi bi-upload me-1"></i>Upload & Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Delete Modal ── -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title">Confirm Delete</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <p class="mb-0">Delete: <strong id="deleteLabel"></strong>?</p>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Clear All Confirmation Modal ── -->
+<div class="modal fade" id="clearAllModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-danger text-white">
+                <h6 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Clear All Data</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <p class="mb-2">This will permanently delete <strong>all {{ entries.count }}</strong> record{{ entries.count|pluralize }}.</p>
+                <p class="mb-0 text-danger fw-bold" style="font-size:13px;">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'rfq_clear_all' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger px-4">
+                        <i class="bi bi-trash3 me-1"></i>Yes, Delete All
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle Form Entry / Bulk Upload sub-buttons
+function toggleAddButtons() {
+    const sub = document.getElementById('addSubButtons');
+    sub.classList.toggle('d-none');
+}
+
+// Hide sub-buttons when a modal closes
+['addModal', 'bulkUploadModal'].forEach(function(id) {
+    document.getElementById(id).addEventListener('hidden.bs.modal', function() {
+        document.getElementById('addSubButtons').classList.add('d-none');
+    });
+});
+
+// Wire up delete modal
+document.getElementById('deleteModal').addEventListener('show.bs.modal', function(event) {
+    const btn = event.relatedTarget;
+    document.getElementById('deleteLabel').textContent = btn.getAttribute('data-label');
+    document.getElementById('deleteForm').action = '/delete/' + btn.getAttribute('data-pk') + '/';
+});
+
+// Show selected file names in bulk upload modal
+document.getElementById('bulkFileInput').addEventListener('change', function() {
+    const preview = document.getElementById('filePreview');
+    const list = document.getElementById('fileList');
+    list.innerHTML = '';
+    if (this.files.length) {
+        Array.from(this.files).forEach(function(f) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item py-1';
+            li.innerHTML = '<i class="bi bi-file-earmark-excel text-success me-2"></i>' + f.name +
+                           ' <span class="text-muted">(' + (f.size / 1024).toFixed(1) + ' KB)</span>';
+            list.appendChild(li);
+        });
+        preview.classList.remove('d-none');
+    } else {
+        preview.classList.add('d-none');
+    }
+});
+
+{% if form.errors %}
+    new bootstrap.Modal(document.getElementById('addModal')).show();
+{% endif %}
+
+// ── Client-side Pagination ──────────────────────────────────────
+(function() {
+    const table = document.querySelector('.rfq-table tbody');
+    const rows = Array.from(table.querySelectorAll('tr:not(:last-child)'));  // exclude empty-state row
+    const emptyRow = table.querySelector('tr:last-child');
+    const sizeSelect = document.getElementById('pageSizeSelect');
+    const pageInfo = document.getElementById('pageInfo');
+    const pageNavTop = document.getElementById('pageNav');
+    const pageNavBottom = document.getElementById('pageNavBottom');
+    let currentPage = 1;
+    let pageSize = 20;
+
+    // Check if we actually have data rows (not just the empty-state row)
+    const hasData = rows.length > 0 && !(rows.length === 1 && rows[0].querySelector('td[colspan]'));
+    if (!hasData) {
+        pageInfo.textContent = '0 entries';
+        return;
+    }
+
+    function totalPages() {
+        if (pageSize === 'all') return 1;
+        return Math.ceil(rows.length / pageSize);
+    }
+
+    function render() {
+        const total = rows.length;
+        const tp = totalPages();
+        if (currentPage > tp) currentPage = tp;
+        if (currentPage < 1) currentPage = 1;
+
+        // Show / hide rows
+        rows.forEach(function(row, i) {
+            if (pageSize === 'all') {
+                row.style.display = '';
+            } else {
+                const start = (currentPage - 1) * pageSize;
+                const end = start + pageSize;
+                row.style.display = (i >= start && i < end) ? '' : 'none';
+            }
+        });
+
+        // Hide empty row if we have data
+        if (emptyRow && emptyRow.querySelector('td[colspan]')) {
+            emptyRow.style.display = 'none';
+        }
+
+        // Page info
+        if (pageSize === 'all') {
+            pageInfo.textContent = 'Showing all ' + total + ' entries';
+        } else {
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, total);
+            pageInfo.textContent = 'Showing ' + start + '–' + end + ' of ' + total + ' entries';
+        }
+
+        // Build page nav buttons
+        buildNav(pageNavTop, tp);
+        buildNav(pageNavBottom, tp);
+    }
+
+    function buildNav(container, tp) {
+        container.innerHTML = '';
+        if (tp <= 1) return;
+
+        // Prev
+        addBtn(container, '‹', currentPage > 1, function() { currentPage--; render(); });
+
+        // Page numbers (show max 7 with ellipsis)
+        var pages = [];
+        if (tp <= 7) {
+            for (var i = 1; i <= tp; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            if (currentPage > 3) pages.push('...');
+            var s = Math.max(2, currentPage - 1);
+            var e = Math.min(tp - 1, currentPage + 1);
+            for (var i = s; i <= e; i++) pages.push(i);
+            if (currentPage < tp - 2) pages.push('...');
+            pages.push(tp);
+        }
+
+        pages.forEach(function(p) {
+            if (p === '...') {
+                var span = document.createElement('span');
+                span.className = 'text-muted px-1';
+                span.textContent = '…';
+                container.appendChild(span);
+            } else {
+                addBtn(container, p, true, function() { currentPage = p; render(); }, p === currentPage);
+            }
+        });
+
+        // Next
+        addBtn(container, '›', currentPage < tp, function() { currentPage++; render(); });
+    }
+
+    function addBtn(container, label, enabled, onclick, active) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm ' + (active ? 'btn-primary' : 'btn-outline-secondary');
+        btn.style.minWidth = '32px';
+        btn.textContent = label;
+        btn.disabled = !enabled;
+        if (enabled && !active) btn.addEventListener('click', onclick);
+        container.appendChild(btn);
+    }
+
+    sizeSelect.addEventListener('change', function() {
+        var val = this.value;
+        pageSize = val === 'all' ? 'all' : parseInt(val, 10);
+        currentPage = 1;
+        render();
+    });
+
+    render();
+})();
+</script>
+{% endblock %}

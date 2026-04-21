@@ -1,0 +1,102 @@
+{% extends "tracker/base.html" %}
+{% block content %}
+
+<div class="form-section p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="section-heading mb-0">Edit — {{ entry.supplier_name }} / {{ entry.part_no }}</span>
+        <a href="{% url 'rfq_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-2">
+
+            <!-- SUPPLIER -->
+            <div class="col-12"><div class="section-heading">Supplier</div></div>
+            <div class="col-md-2"><label class="form-label">Supplier Code *</label>{{ form.supplier_code }}</div>
+            <div class="col-md-3"><label class="form-label">Supplier Name *</label>{{ form.supplier_name }}</div>
+            <div class="col-md-2"><label class="form-label">PIC</label>{{ form.pic }}</div>
+            <div class="col-md-2"><label class="form-label">Contact Email</label>{{ form.contact_email }}</div>
+            <div class="col-md-3"><label class="form-label">Contact Secondary Email</label>{{ form.contact_secondary_email }}</div>
+
+            <!-- PART -->
+            <div class="col-12 mt-1"><div class="section-heading">Part</div></div>
+            <div class="col-md-2"><label class="form-label">Part No *</label>{{ form.part_no }}</div>
+            <div class="col-md-4"><label class="form-label">Part Description</label>{{ form.part_description }}</div>
+            <div class="col-md-1"><label class="form-label">Order Qty</label>{{ form.order_qty }}</div>
+            <div class="col-md-1"><label class="form-label">UOM</label>{{ form.uom }}</div>
+            <div class="col-md-2"><label class="form-label">Unit Price</label>{{ form.unit_price }}</div>
+            <div class="col-md-1"><label class="form-label">Currency</label>{{ form.currency }}</div>
+
+            <!-- LEAD TIMES -->
+            <div class="col-12 mt-1"><div class="section-heading">Lead Times</div></div>
+            <div class="col-md-2"><label class="form-label">Lead Time (days)</label>{{ form.lead_time_days }}</div>
+            <div class="col-md-2"><label class="form-label">Ship Lead Time (days)</label>{{ form.ship_lead_time_days }}</div>
+
+            <!-- QUOTE DETAILS -->
+            <div class="col-12 mt-1"><div class="section-heading">Quote Details</div></div>
+            <div class="col-md-1"><label class="form-label">UOM</label>{{ form.quote_uom }}</div>
+            <div class="col-md-2"><label class="form-label">COO</label>{{ form.coo }}</div>
+            <div class="col-md-1"><label class="form-label">Currency</label>{{ form.quote_currency }}</div>
+            <div class="col-md-2"><label class="form-label">Unit Price 1</label>{{ form.unit_price_1 }}</div>
+            <div class="col-md-1"><label class="form-label">MOQ-1</label>{{ form.moq_1 }}</div>
+            <div class="col-md-2"><label class="form-label">Unit Price 2</label>{{ form.unit_price_2 }}</div>
+            <div class="col-md-1"><label class="form-label">MOQ-2</label>{{ form.moq_2 }}</div>
+            <div class="col-md-2"><label class="form-label">Unit Price 3</label>{{ form.unit_price_3 }}</div>
+            <div class="col-md-1"><label class="form-label">MOQ-3</label>{{ form.moq_3 }}</div>
+            <div class="col-md-1"><label class="form-label">Lot Size</label>{{ form.lot_size }}</div>
+
+            <!-- PRODUCT CODES -->
+            <div class="col-12 mt-1"><div class="section-heading">Product Codes</div></div>
+            <div class="col-md-2"><label class="form-label">HTS Code</label>{{ form.hts_code }}</div>
+            <div class="col-md-2"><label class="form-label">ECCN/EAR99</label>{{ form.eccn_ear99 }}</div>
+
+            <!-- MANUFACTURER -->
+            <div class="col-12 mt-1"><div class="section-heading">Manufacturer</div></div>
+            <div class="col-md-2"><label class="form-label">Manufacture Part Number</label>{{ form.manufacture_part_number }}</div>
+            <div class="col-md-2"><label class="form-label">Manufacturer Name</label>{{ form.manufacturer_name }}</div>
+            <div class="col-md-4"><label class="form-label">Manufacturer Address (Street|City|ZIP|Country)</label>{{ form.manufacturer_address }}</div>
+            <div class="col-md-2"><label class="form-label">Item Weight (kg)</label>{{ form.item_weight_kg }}</div>
+            <div class="col-md-2"><label class="form-label">Volume Weight (kg)</label>{{ form.volume_weight_kg }}</div>
+
+            <!-- COMPLIANCE -->
+            <div class="col-12 mt-1"><div class="section-heading">Compliance</div></div>
+            <div class="col-md-2"><label class="form-label">Russian Steel Confirmation</label>{{ form.russian_steel_confirmation }}</div>
+            <div class="col-md-1"><label class="form-label">Hazmat (Y/N)</label>{{ form.hazmat }}</div>
+            <div class="col-md-2"><label class="form-label">UN# · SDS/MSDS</label>{{ form.un_sds_msds }}</div>
+            <div class="col-md-2"><label class="form-label">Product Regulation</label>{{ form.product_regulation }}</div>
+            <div class="col-md-2"><label class="form-label">EOL Status</label>{{ form.eol_status }}</div>
+            <div class="col-md-3"><label class="form-label">Alternative Part(s)</label>{{ form.alternative_parts }}</div>
+            <div class="col-md-3"><label class="form-label">Alternative Part No</label>{{ form.alternative_part_no }}</div>
+
+            <!-- CN ONLY -->
+            <div class="col-12 mt-1"><div class="section-heading">China-Specific (CN Only)</div></div>
+            <div class="col-md-4"><label class="form-label">Mfg Address + Postal</label>{{ form.mfg_address_postal_cn }}</div>
+            <div class="col-md-2"><label class="form-label">UFLPA Compliance Statement</label>{{ form.uflpa_compliance }}</div>
+            <div class="col-md-2"><label class="form-label">UFLPA Start Date</label>{{ form.uflpa_start_date }}</div>
+            <div class="col-md-2"><label class="form-label">UFLPA Expiry Date</label>{{ form.uflpa_expiry_date }}</div>
+
+            <!-- USMCA -->
+            <div class="col-12 mt-1"><div class="section-heading">USMCA (CA/MX Only)</div></div>
+            <div class="col-md-2"><label class="form-label">USMCA Certificate</label>{{ form.usmca_certificate }}</div>
+            <div class="col-md-2"><label class="form-label">USMCA Start Date</label>{{ form.usmca_start_date }}</div>
+            <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ form.usmca_expiry_date }}</div>
+
+            <div class="col-12 mt-3">
+                <button type="submit" class="btn btn-primary btn-sm px-4">
+                    <i class="bi bi-check-circle me-1"></i>Save Changes
+                </button>
+                <a href="{% url 'rfq_list' %}" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+            </div>
+        </div>
+
+        {% if form.errors %}
+            <div class="alert alert-danger mt-2 py-2">
+                <strong>Errors:</strong> {{ form.errors }}
+            </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
