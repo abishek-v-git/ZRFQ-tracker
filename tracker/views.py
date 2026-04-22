@@ -154,13 +154,21 @@ def _coerce(field, value):
     if field in DATE_FIELDS:
         if isinstance(value, (datetime.date, datetime.datetime)):
             return value if isinstance(value, datetime.date) else value.date()
+        s = str(value).strip()
+        if not s: return None
+        # Try DD/MM/YYYY first (as requested by user)
         try:
-            return datetime.datetime.strptime(str(value).strip(), '%m/%d/%Y').date()
+            return datetime.datetime.strptime(s, '%d/%m/%Y').date()
         except ValueError:
+            # Fallback to MM/DD/YYYY
             try:
-                return datetime.datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
+                return datetime.datetime.strptime(s, '%m/%d/%Y').date()
             except ValueError:
-                return None
+                # Fallback to ISO YYYY-MM-DD
+                try:
+                    return datetime.datetime.strptime(s, '%Y-%m-%d').date()
+                except ValueError:
+                    return None
     return str(value).strip()
 
 
@@ -365,6 +373,7 @@ def rfq_export(request):
         'Mfg Address + Postal (CN Only)', 'UFLPA Compliance (CN Only)',
         'UFLPA Start Date', 'UFLPA Expiry Date',
         'USMCA Certificate (CA/MX Only)', 'USMCA Start Date', 'USMCA Expiry Date',
+        'Status', 'Comments',
     ]
 
     header_fill = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
@@ -423,6 +432,8 @@ def rfq_export(request):
             entry.usmca_certificate,
             entry.usmca_start_date,
             entry.usmca_expiry_date,
+            entry.status,
+            entry.comments,
         ]
         for col_idx, value in enumerate(row, start=1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)

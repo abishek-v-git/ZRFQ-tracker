@@ -660,11 +660,13 @@ document.getElementById('longNoteSaveBtn').addEventListener('click', function() 
 var _editRow = null;
 var _editPk  = null;
 
-const MONTHS = ['Jan.','Feb.','March','April','May','June','July','Aug.','Sept.','Oct.','Nov.','Dec.'];
 function fmtDate(iso) {
-    if (!iso) return '—';
-    const [y, m, d] = iso.split('-').map(Number);
-    return MONTHS[m - 1] + ' ' + d + ', ' + y;
+    if (!iso || iso === '—' || iso === '') return '—';
+    // iso is YYYY-MM-DD
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const [y, m, d] = parts;
+    return `${d}/${m}/${y}`;
 }
 function truncate(s, n) {
     if (!s) return '—';
@@ -995,11 +997,11 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
             <td>${val(esc(e.alternative_part_no))}</td>
             <td title="${esc(e.mfg_address_postal_cn)}">${esc(trunc(e.mfg_address_postal_cn,25))}</td>
             <td>${yesno('uflpa_compliance',e.pk,e.uflpa_compliance)}</td>
-            <td>${val(esc(e.uflpa_start_date))}</td>
-            <td>${val(esc(e.uflpa_expiry_date))}</td>
+            <td>${fmtDate(e.uflpa_start_date)}</td>
+            <td>${fmtDate(e.uflpa_expiry_date)}</td>
             <td>${yesno('usmca_certificate',e.pk,e.usmca_certificate)}</td>
-            <td>${val(esc(e.usmca_start_date))}</td>
-            <td>${val(esc(e.usmca_expiry_date))}</td>
+            <td>${fmtDate(e.usmca_start_date)}</td>
+            <td>${fmtDate(e.usmca_expiry_date)}</td>
             <td class="status-cell" style="min-width:150px;">${statusCell}</td>
             <td class="comments-cell" style="min-width:200px;">${commentsCell}</td>
             <td class="text-nowrap">
