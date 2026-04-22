@@ -86,10 +86,41 @@
     .comment-container:hover .expand-comment-btn { opacity: 1; }
     .expand-comment-btn:hover { color: #0d6efd; }
 
-    /* Fix stacking context so focused cell stays on top of other sticky columns */
-    .comments-cell:focus-within {
-        z-index: 2000 !important;
+    /* Status Badges */
+    .status-badge-container {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        width: 100%;
     }
+    .status-completed { background-color: #d1e7dd; color: #0a3622; border-color: #a3cfbb; }
+    .status-partial   { background-color: #fff3cd; color: #664d03; border-color: #ffe69c; }
+    .status-none      { background-color: #f8d7da; color: #842029; border-color: #f5c2c7; }
+    .status-others    { background-color: #cfe2ff; color: #084298; border-color: #b6d4fe; }
+    .status-empty     { background-color: #f8f9fa; color: #6c757d; border-color: #dee2e6; }
+
+    .status-sel-badge {
+        background: transparent;
+        border: none;
+        color: inherit;
+        font-weight: inherit;
+        font-size: inherit;
+        padding: 0;
+        cursor: pointer;
+        width: 100%;
+        outline: none;
+    }
+    .status-sel-badge option { background: #fff; color: #333; font-weight: normal; }
+
+    /* Stacking fix for sticky columns */
+    .status-cell:focus-within { z-index: 2000 !important; }
+    .comments-cell:focus-within { z-index: 2000 !important; }
 </style>
 
 <!-- Top Action Bar -->
@@ -781,24 +812,36 @@ function updateRowFromEntry(row, e) {
     ddrop(42, 'usmca_certificate');
     c[43].textContent = fmtDate(e.usmca_start_date);
     c[44].textContent = fmtDate(e.usmca_expiry_date);
-    // col 45: Status
+    // col 45: Status Badge System
     (function() {
-        const FIXED = ['No Response Yet', 'Partially Data Received', 'Completed'];
-        const sel = c[45].querySelector('.status-sel');
-        const inp = c[45].querySelector('.status-txt');
         const val = e.status || '';
-        if (!val || FIXED.includes(val)) {
-            if (sel) sel.value = val;
-            if (inp) { inp.style.display = 'none'; inp.value = ''; }
-        } else {
-            if (sel) sel.value = 'Others';
-            if (inp) { inp.value = val; inp.style.display = 'block'; }
+        const sel = c[45].querySelector('.status-sel-badge');
+        const inp = c[45].querySelector('.status-txt');
+        const container = c[45].querySelector('.status-badge-container');
+
+        if (sel) sel.value = (['Completed', 'Partially Data Received', 'No Response Yet'].includes(val) || !val) ? val : 'Others';
+        if (inp) {
+            const isOthers = val && !['Completed', 'Partially Data Received', 'No Response Yet'].includes(val);
+            inp.value = isOthers ? val : '';
+            inp.style.display = isOthers ? 'block' : 'none';
+        }
+        if (container) {
+            container.className = 'status-badge-container ' + getStatusClass(val);
         }
     })();
+
     // col 46: Comments (free text)
     if (c[46].querySelector('.comments-txt')) {
         c[46].querySelector('.comments-txt').value = e.comments || '';
     }
+}
+
+function getStatusClass(status) {
+    if (!status) return 'status-empty';
+    if (status === 'Completed') return 'status-completed';
+    if (status === 'Partially Data Received') return 'status-partial';
+    if (status === 'No Response Yet') return 'status-none';
+    return 'status-others';
 }
 
 // Save button triggers form submit
@@ -887,17 +930,20 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
             ${prodRegOpts.map(o=>`<option value="${esc(o)}"${e.product_regulation===o?' selected':''}>${esc(o)}</option>`).join('')}
         </select>`;
 
-        const statusCell = `<select class="inline-select status-sel" data-pk="${e.pk}">
-            <option value="">—</option>
-            <option value="No Response Yet"${e.status==='No Response Yet'?' selected':''}>No Response Yet</option>
-            <option value="Partially Data Received"${e.status==='Partially Data Received'?' selected':''}>Partially Data Received</option>
-            <option value="Completed"${e.status==='Completed'?' selected':''}>Completed</option>
-            <option value="Others"${isOthers?' selected':''}>Others</option>
-        </select>
+        const statusClass = getStatusClass(e.status);
+        const statusCell = `<div class="status-badge-container ${statusClass}">
+            <select class="status-sel-badge status-sel" data-pk="${e.pk}">
+                <option value="">— NO STATUS —</option>
+                <option value="No Response Yet"${e.status==='No Response Yet'?' selected':''}>NO RESPONSE</option>
+                <option value="Partially Data Received"${e.status==='Partially Data Received'?' selected':''}>PARTIAL DATA</option>
+                <option value="Completed"${e.status==='Completed'?' selected':''}>COMPLETED</option>
+                <option value="Others"${isOthers?' selected':''}>OTHERS...</option>
+            </select>
+        </div>
         <input type="text" class="form-control form-control-sm status-txt mt-1"
                data-pk="${e.pk}" placeholder="Type status..."
                value="${isOthers?esc(e.status):''}"
-               style="display:${isOthers?'block':'none'};font-size:12px;">`;
+               style="display:${isOthers?'block':'none'};font-size:11px;padding:2px 5px;">`;
 
         const commentsCell = `<div class="comment-container">
             <textarea class="form-control form-control-sm comments-txt"
@@ -1000,15 +1046,31 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
 
         tr.querySelectorAll('.status-sel').forEach(function(sel) {
             sel.addEventListener('change', function() {
-                const inp = this.closest('td').querySelector('.status-txt');
-                if (this.value === 'Others') { inp.style.display = 'block'; inp.focus(); }
-                else { inp.style.display = 'none'; inp.value = ''; patchField(this.dataset.pk, 'status', this.value, this); }
+                const td = this.closest('td');
+                const inp = td.querySelector('.status-txt');
+                const badge = td.querySelector('.status-badge-container');
+                if (this.value === 'Others') {
+                    badge.className = 'status-badge-container status-others';
+                    inp.style.display = 'block';
+                    inp.focus();
+                } else {
+                    badge.className = 'status-badge-container ' + getStatusClass(this.value);
+                    inp.style.display = 'none';
+                    inp.value = '';
+                    patchField(this.dataset.pk, 'status', this.value, this);
+                }
             });
         });
 
         tr.querySelectorAll('.status-txt').forEach(function(inp) {
             inp.addEventListener('keydown', function(ev) {
-                if (ev.key === 'Enter') { ev.preventDefault(); patchField(this.dataset.pk, 'status', this.value.trim(), this); this.blur(); }
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    const badge = this.closest('td').querySelector('.status-badge-container');
+                    badge.className = 'status-badge-container status-others';
+                    patchField(this.dataset.pk, 'status', this.value.trim(), this);
+                    this.blur();
+                }
             });
         });
 
