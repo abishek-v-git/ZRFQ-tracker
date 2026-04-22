@@ -11,4 +11,5 @@ urlpatterns = [
     path('clear-all/', views.rfq_clear_all, name='rfq_clear_all'),
     path('patch/<int:pk>/', views.rfq_patch, name='rfq_patch'),
     path('edit-json/<int:pk>/', views.rfq_edit_json, name='rfq_edit_json'),
+    path('data/', views.rfq_data, name='rfq_data'),
 ]

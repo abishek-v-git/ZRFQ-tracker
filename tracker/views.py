@@ -220,10 +220,86 @@ def _entry_to_dict(entry):
 
 @login_required
 def rfq_list(request):
-    entries = RFQEntry.objects.all()
     form = RFQEntryForm()
     edit_form = RFQEntryForm(prefix='edit')
-    return render(request, 'tracker/rfq_list.html', {'entries': entries, 'form': form, 'edit_form': edit_form})
+    total_count = RFQEntry.objects.count()
+    return render(request, 'tracker/rfq_list.html', {'total_count': total_count, 'form': form, 'edit_form': edit_form})
+
+
+@login_required
+def rfq_data(request):
+    from django.db.models import Q
+    from django.core.paginator import Paginator
+
+    q = request.GET.get('q', '').strip()
+    try:
+        page = int(request.GET.get('page', 1))
+    except (ValueError, TypeError):
+        page = 1
+    page_size = request.GET.get('page_size', '20')
+    try:
+        sort_col = int(request.GET.get('sort_col', -1))
+    except (ValueError, TypeError):
+        sort_col = -1
+    sort_dir = request.GET.get('sort_dir', 'asc')
+
+    qs = RFQEntry.objects.all()
+
+    if q:
+        qs = qs.filter(
+            Q(supplier_code__icontains=q) | Q(supplier_name__icontains=q) |
+            Q(part_no__icontains=q) | Q(part_description__icontains=q) |
+            Q(manufacture_part_number__icontains=q) | Q(manufacturer_name__icontains=q) |
+            Q(pic__icontains=q) | Q(coo__icontains=q) | Q(hts_code__icontains=q) |
+            Q(eccn_ear99__icontains=q) | Q(status__icontains=q) | Q(comments__icontains=q)
+        )
+
+    COL_FIELD = {
+        0: 'pk', 1: 'supplier_code', 2: 'supplier_name', 3: 'part_no',
+        4: 'part_description', 5: 'order_qty', 6: 'uom', 7: 'unit_price',
+        8: 'currency', 9: 'pic', 10: 'contact_email', 11: 'contact_secondary_email',
+        12: 'lead_time_days', 13: 'ship_lead_time_days', 14: 'quote_uom',
+        15: 'coo', 16: 'quote_currency', 17: 'unit_price_1', 18: 'moq_1',
+        19: 'unit_price_2', 20: 'moq_2', 21: 'unit_price_3', 22: 'moq_3',
+        23: 'lot_size', 24: 'hts_code', 25: 'eccn_ear99',
+        26: 'manufacture_part_number', 27: 'manufacturer_name',
+        28: 'manufacturer_address', 29: 'item_weight_kg', 30: 'volume_weight_kg',
+        31: 'russian_steel_confirmation', 32: 'hazmat', 33: 'un_sds_msds',
+        34: 'product_regulation', 35: 'eol_status', 36: 'alternative_parts',
+        37: 'alternative_part_no', 38: 'mfg_address_postal_cn',
+        39: 'uflpa_compliance', 40: 'uflpa_start_date', 41: 'uflpa_expiry_date',
+        42: 'usmca_certificate', 43: 'usmca_start_date', 44: 'usmca_expiry_date',
+        45: 'status', 46: 'comments',
+    }
+
+    field = COL_FIELD.get(sort_col)
+    if field:
+        order = field if sort_dir == 'asc' else '-' + field
+        qs = qs.order_by(order)
+
+    total = qs.count()
+
+    if page_size == 'all':
+        entries = list(qs)
+        pages = 1
+        page = 1
+    else:
+        try:
+            page_size_int = int(page_size)
+        except (ValueError, TypeError):
+            page_size_int = 20
+        paginator = Paginator(qs, page_size_int)
+        page_obj = paginator.get_page(page)
+        entries = list(page_obj.object_list)
+        pages = paginator.num_pages
+        page = page_obj.number
+
+    return JsonResponse({
+        'entries': [_entry_to_dict(e) for e in entries],
+        'total': total,
+        'page': page,
+        'pages': pages,
+    })
 
 
 @login_required
@@ -236,8 +312,9 @@ def rfq_add(request):
             return redirect('rfq_list')
         else:
             messages.error(request, 'Please correct the errors below.')
-            entries = RFQEntry.objects.all()
-            return render(request, 'tracker/rfq_list.html', {'entries': entries, 'form': form})
+            total_count = RFQEntry.objects.count()
+            edit_form = RFQEntryForm(prefix='edit')
+            return render(request, 'tracker/rfq_list.html', {'total_count': total_count, 'form': form, 'edit_form': edit_form})
     return redirect('rfq_list')
 
 

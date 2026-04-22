@@ -111,11 +111,11 @@
     <a href="{% url 'rfq_export' %}" class="btn btn-success btn-sm">
         <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
     </a>
-    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#clearAllModal"
-            {% if not entries.count %}disabled{% endif %}>
+    <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
+            {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
     </button>
-    <span class="ms-auto text-muted" style="font-size:12px;">{{ entries.count }} entr{{ entries.count|pluralize:"y,ies" }}</span>
+    <span class="ms-auto text-muted" style="font-size:12px;" id="entryCountBadge">{{ total_count }} entr{{ total_count|pluralize:"y,ies" }}</span>
 </div>
 
 <!-- Pagination Controls (top) -->
@@ -196,132 +196,12 @@
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for e in entries %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ e.supplier_code }}</td>
-                    <td>{{ e.supplier_name }}</td>
-                    <td>{{ e.part_no }}</td>
-                    <td title="{{ e.part_description }}">{{ e.part_description|truncatechars:30|default:"—" }}</td>
-                    <td>{{ e.order_qty|default:"—" }}</td>
-                    <td>{{ e.uom|default:"—" }}</td>
-                    <td>{{ e.unit_price|default:"—" }}</td>
-                    <td>{{ e.currency|default:"—" }}</td>
-                    <td>{{ e.pic|default:"—" }}</td>
-                    <td>{% if e.contact_email %}<a href="mailto:{{ e.contact_email }}">{{ e.contact_email }}</a>{% else %}—{% endif %}</td>
-                    <td>{% if e.contact_secondary_email %}<a href="mailto:{{ e.contact_secondary_email }}">{{ e.contact_secondary_email }}</a>{% else %}—{% endif %}</td>
-                    <td>{{ e.lead_time_days|default:"—" }}</td>
-                    <td>{{ e.ship_lead_time_days|default:"—" }}</td>
-                    <td>{{ e.quote_uom|default:"—" }}</td>
-                    <td>{{ e.coo|default:"—" }}</td>
-                    <td>{{ e.quote_currency|default:"—" }}</td>
-                    <td>{{ e.unit_price_1|default:"—" }}</td>
-                    <td>{{ e.moq_1|default:"—" }}</td>
-                    <td>{{ e.unit_price_2|default:"—" }}</td>
-                    <td>{{ e.moq_2|default:"—" }}</td>
-                    <td>{{ e.unit_price_3|default:"—" }}</td>
-                    <td>{{ e.moq_3|default:"—" }}</td>
-                    <td>{{ e.lot_size|default:"—" }}</td>
-                    <td>{{ e.hts_code|default:"—" }}</td>
-                    <td>{{ e.eccn_ear99|default:"—" }}</td>
-                    <td class="col-mfr-pn">{{ e.manufacture_part_number|default:"—" }}</td>
-                    <td>{{ e.manufacturer_name|default:"—" }}</td>
-                    <td title="{{ e.manufacturer_address }}">{{ e.manufacturer_address|truncatechars:30|default:"—" }}</td>
-                    <td>{{ e.item_weight_kg|default:"—" }}</td>
-                    <td>{{ e.volume_weight_kg|default:"—" }}</td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="russian_steel_confirmation">
-                        <option value="">—</option>
-                        <option value="Yes"{% if e.russian_steel_confirmation == "Yes" %} selected{% endif %}>Yes</option>
-                        <option value="No"{% if e.russian_steel_confirmation == "No" %} selected{% endif %}>No</option>
-                    </select></td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="hazmat">
-                        <option value="">—</option>
-                        <option value="Yes"{% if e.hazmat == "Yes" %} selected{% endif %}>Yes</option>
-                        <option value="No"{% if e.hazmat == "No" %} selected{% endif %}>No</option>
-                    </select></td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="un_sds_msds">
-                        <option value="">—</option>
-                        <option value="Yes"{% if e.un_sds_msds == "Yes" %} selected{% endif %}>Yes</option>
-                        <option value="No"{% if e.un_sds_msds == "No" %} selected{% endif %}>No</option>
-                    </select></td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="product_regulation">
-                        <option value="">—</option>
-                        <option value="FDA Compliance"{% if e.product_regulation == "FDA Compliance" %} selected{% endif %}>FDA Compliance</option>
-                        <option value="FCC Certification"{% if e.product_regulation == "FCC Certification" %} selected{% endif %}>FCC Certification</option>
-                        <option value="CE"{% if e.product_regulation == "CE" %} selected{% endif %}>CE</option>
-                        <option value="Others"{% if e.product_regulation == "Others" %} selected{% endif %}>Others</option>
-                        <option value="Not Applicable"{% if e.product_regulation == "Not Applicable" %} selected{% endif %}>Not Applicable</option>
-                    </select></td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="eol_status">
-                        <option value="">—</option>
-                        <option value="Yes"{% if e.eol_status == "Yes" %} selected{% endif %}>Yes</option>
-                        <option value="No"{% if e.eol_status == "No" %} selected{% endif %}>No</option>
-                    </select></td>
-                    <td title="{{ e.alternative_parts }}">{{ e.alternative_parts|truncatechars:25|default:"—" }}</td>
-                    <td>{{ e.alternative_part_no|default:"—" }}</td>
-                    <td title="{{ e.mfg_address_postal_cn }}">{{ e.mfg_address_postal_cn|truncatechars:25|default:"—" }}</td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="uflpa_compliance">
-                        <option value="">—</option>
-                        <option value="Yes"{% if e.uflpa_compliance == "Yes" %} selected{% endif %}>Yes</option>
-                        <option value="No"{% if e.uflpa_compliance == "No" %} selected{% endif %}>No</option>
-                    </select></td>
-                    <td>{{ e.uflpa_start_date|default:"—" }}</td>
-                    <td>{{ e.uflpa_expiry_date|default:"—" }}</td>
-                    <td><select class="inline-select" data-pk="{{ e.pk }}" data-field="usmca_certificate">
-                        <option value="">—</option>
-                        <option value="Yes"{% if e.usmca_certificate == "Yes" %} selected{% endif %}>Yes</option>
-                        <option value="No"{% if e.usmca_certificate == "No" %} selected{% endif %}>No</option>
-                    </select></td>
-                    <td>{{ e.usmca_start_date|default:"—" }}</td>
-                    <td>{{ e.usmca_expiry_date|default:"—" }}</td>
-                    <td class="status-cell" style="min-width:150px;">
-                        <select class="inline-select status-sel" data-pk="{{ e.pk }}">
-                            <option value="">—</option>
-                            <option value="No Response Yet"{% if e.status == "No Response Yet" %} selected{% endif %}>No Response Yet</option>
-                            <option value="Partially Data Received"{% if e.status == "Partially Data Received" %} selected{% endif %}>Partially Data Received</option>
-                            <option value="Completed"{% if e.status == "Completed" %} selected{% endif %}>Completed</option>
-                            <option value="Others"{% if e.status and e.status != "No Response Yet" and e.status != "Partially Data Received" and e.status != "Completed" %} selected{% endif %}>Others</option>
-                        </select>
-                        <input type="text" class="form-control form-control-sm status-txt mt-1"
-                               data-pk="{{ e.pk }}"
-                               placeholder="Type status..."
-                               {% if e.status and e.status != "No Response Yet" and e.status != "Partially Data Received" and e.status != "Completed" %}value="{{ e.status }}" style="display:block;font-size:12px;"{% else %}style="display:none;font-size:12px;"{% endif %}>
-                    </td>
-                    <td class="comments-cell" style="min-width:200px;">
-                        <div class="comment-container">
-                            <textarea class="form-control form-control-sm comments-txt"
-                                      data-pk="{{ e.pk }}"
-                                      placeholder="Enter comment..."
-                                      rows="1">{{ e.comments }}</textarea>
-                            <button type="button" class="expand-comment-btn" title="Open Fullscreen"
-                                    onclick="openLongNoteModal(this.previousElementSibling)">
-                                <i class="bi bi-arrows-fullscreen"></i>
-                            </button>
-                        </div>
-                    </td>
-                    <td class="text-nowrap">
-                        <button type="button" class="btn btn-sm btn-outline-primary btn-action me-1"
-                                onclick="openEditModal({{ e.pk }}, this.closest('tr'))">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button type="button"
-                            class="btn btn-sm btn-outline-danger btn-action"
-                            data-bs-toggle="modal"
-                            data-bs-target="#deleteModal"
-                            data-pk="{{ e.pk }}"
-                            data-label="{{ e.supplier_name }} — {{ e.part_no }}">
-                            <i class="bi bi-trash"></i>
-                        </button>
+            <tbody id="rfqTbody">
+                <tr id="loadingRow">
+                    <td colspan="48" class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…
                     </td>
                 </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="48" class="text-center text-muted py-5">
-                        No entries yet. Click <strong>+ Add New Item</strong> to get started.
-                    </td>
-                </tr>
-                {% endfor %}
             </tbody>
         </table>
     </div>
@@ -611,7 +491,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body py-3">
-                <p class="mb-2">This will permanently delete <strong>all {{ entries.count }}</strong> record{{ entries.count|pluralize }}.</p>
+                <p class="mb-2">This will permanently delete <strong>all <span id="clearAllCount">{{ total_count }}</span></strong> record(s).</p>
                 <p class="mb-0 text-danger fw-bold" style="font-size:13px;">This action cannot be undone.</p>
             </div>
             <div class="modal-footer py-2">
@@ -703,43 +583,6 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
     new bootstrap.Modal(document.getElementById('addModal')).show();
 {% endif %}
 
-// ── Inline dropdown AJAX save ─────────────────────────────────────
-document.querySelectorAll('.inline-select:not(.status-sel)').forEach(function(sel) {
-    sel.dataset.original = sel.value;
-    sel.addEventListener('change', function() {
-        const pk = this.dataset.pk;
-        const field = this.dataset.field;
-        const value = this.value;
-        const prev = this.dataset.original;
-        this.classList.add('is-saving');
-        fetch('/patch/' + pk + '/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken(),
-            },
-            body: JSON.stringify({ field: field, value: value }),
-        })
-        .then(r => r.json())
-        .then(data => {
-            this.classList.remove('is-saving');
-            if (data.ok) {
-                this.dataset.original = value;
-                this.classList.add('is-saved');
-                setTimeout(() => this.classList.remove('is-saved'), 1500);
-                showToast('Saved', true);
-            } else {
-                this.value = prev;
-                showToast('Save failed', false);
-            }
-        })
-        .catch(() => {
-            this.classList.remove('is-saving');
-            this.value = prev;
-            showToast('Save failed', false);
-        });
-    });
-});
 
 // ── Status column: dropdown + free-text "Others" ────────────────
 function patchField(pk, field, value, feedbackEl) {
@@ -765,33 +608,7 @@ function patchField(pk, field, value, feedbackEl) {
     });
 }
 
-document.querySelectorAll('.status-sel').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-        const pk = this.dataset.pk;
-        const cell = this.closest('td');
-        const inp = cell.querySelector('.status-txt');
-        if (this.value === 'Others') {
-            inp.style.display = 'block';
-            inp.focus();
-        } else {
-            inp.style.display = 'none';
-            inp.value = '';
-            patchField(pk, 'status', this.value, this);
-        }
-    });
-});
-
-document.querySelectorAll('.status-txt').forEach(function(inp) {
-    inp.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { 
-            e.preventDefault(); 
-            patchField(this.dataset.pk, 'status', this.value.trim(), this);
-            this.blur(); 
-        }
-    });
-});
-
-// ── Comments column: Instant save + Expansion ──────────────────
+// ── Comments fullscreen modal ─────────────────────────────────────
 let activeRefTextarea = null;
 
 function openLongNoteModal(textarea) {
@@ -806,24 +623,6 @@ document.getElementById('longNoteSaveBtn').addEventListener('click', function() 
     activeRefTextarea.value = val;
     patchField(activeRefTextarea.dataset.pk, 'comments', val.trim(), activeRefTextarea);
     bootstrap.Modal.getInstance(document.getElementById('longNoteModal')).hide();
-});
-
-document.querySelectorAll('.comments-txt').forEach(function(txt) {
-    // Instant save on blur
-    txt.addEventListener('blur', function() {
-        // If it's focused, it might be in "float" mode. 
-        // We only save if the value changed.
-        patchField(this.dataset.pk, 'comments', this.value.trim(), this);
-    });
-
-    // Handle expansion height if needed
-    txt.addEventListener('input', function() {
-        if (this === document.activeElement) {
-            this.style.height = 'auto';
-            const newH = Math.min(this.scrollHeight, 300);
-            this.style.height = newH + 'px';
-        }
-    });
 });
 
 // ── Edit modal ────────────────────────────────────────────────────
@@ -1044,139 +843,256 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
     });
 });
 
-// ── Client-side Pagination & Search ──────────────────────────────
+// ── Server-side AJAX Pagination, Search & Sort ───────────────────
 (function() {
-    const table = document.querySelector('.rfq-table tbody');
-    const allRows = Array.from(table.querySelectorAll('tr:not(:last-child)'));
-    const emptyRow = table.querySelector('tr:last-child');
-    const sizeSelect = document.getElementById('pageSizeSelect');
+    const tbody       = document.getElementById('rfqTbody');
+    const sizeSelect  = document.getElementById('pageSizeSelect');
     const searchInput = document.getElementById('tableSearch');
-    const pageInfo = document.getElementById('pageInfo');
-    const pageNavTop = document.getElementById('pageNav');
-    const pageNavBottom = document.getElementById('pageNavBottom');
+    const pageInfo    = document.getElementById('pageInfo');
+    const pageNavTop  = document.getElementById('pageNav');
+    const pageNavBot  = document.getElementById('pageNavBottom');
 
-    let filteredRows = allRows;
-    let currentPage = 1;
-    let pageSize = 20;
-    let currentSort = { col: -1, asc: true };
+    let currentPage  = 1;
+    let pageSize     = 20;
+    let searchQuery  = '';
+    let sortCol      = -1;
+    let sortDir      = 'asc';
+    let searchTimer  = null;
 
-    // Get cell sort/search text, handling inline-select, status, and comments cells
-    function cellText(cell) {
-        // Status cell
-        const statTxt = cell.querySelector('.status-txt');
-        if (statTxt && statTxt.style.display !== 'none') return statTxt.value.trim().toLowerCase();
-        
-        // Comments cell
-        const commTxt = cell.querySelector('.comments-txt');
-        if (commTxt) return commTxt.value.trim().toLowerCase();
+    // ── Row builder ───────────────────────────────────────────────
+    function esc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function trunc(s, n) {
+        if (!s) return '—';
+        return s.length > n ? s.substring(0, n - 1) + '…' : s;
+    }
+    function val(v) { return v || '—'; }
+    function yesno(field, pk, v) {
+        return `<select class="inline-select" data-pk="${pk}" data-field="${field}">
+            <option value="">—</option>
+            <option value="Yes"${v==='Yes'?' selected':''}>Yes</option>
+            <option value="No"${v==='No'?' selected':''}>No</option>
+        </select>`;
+    }
+    function emailLink(e) { return e ? `<a href="mailto:${esc(e)}">${esc(e)}</a>` : '—'; }
 
-        const sel = cell.querySelector('select.inline-select');
-        if (sel) return (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '').trim().toLowerCase();
-        return cell.textContent.trim().toLowerCase();
+    function buildRow(e, rowNum) {
+        const FIXED = ['No Response Yet','Partially Data Received','Completed'];
+        const isOthers = e.status && !FIXED.includes(e.status);
+
+        const prodRegOpts = ['FDA Compliance','FCC Certification','CE','Others','Not Applicable'];
+        const prodRegSel = `<select class="inline-select" data-pk="${e.pk}" data-field="product_regulation">
+            <option value="">—</option>
+            ${prodRegOpts.map(o=>`<option value="${esc(o)}"${e.product_regulation===o?' selected':''}>${esc(o)}</option>`).join('')}
+        </select>`;
+
+        const statusCell = `<select class="inline-select status-sel" data-pk="${e.pk}">
+            <option value="">—</option>
+            <option value="No Response Yet"${e.status==='No Response Yet'?' selected':''}>No Response Yet</option>
+            <option value="Partially Data Received"${e.status==='Partially Data Received'?' selected':''}>Partially Data Received</option>
+            <option value="Completed"${e.status==='Completed'?' selected':''}>Completed</option>
+            <option value="Others"${isOthers?' selected':''}>Others</option>
+        </select>
+        <input type="text" class="form-control form-control-sm status-txt mt-1"
+               data-pk="${e.pk}" placeholder="Type status..."
+               value="${isOthers?esc(e.status):''}"
+               style="display:${isOthers?'block':'none'};font-size:12px;">`;
+
+        const commentsCell = `<div class="comment-container">
+            <textarea class="form-control form-control-sm comments-txt"
+                      data-pk="${e.pk}" placeholder="Enter comment..." rows="1">${esc(e.comments)}</textarea>
+            <button type="button" class="expand-comment-btn" title="Open Fullscreen"
+                    onclick="openLongNoteModal(this.previousElementSibling)">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+        </div>`;
+
+        return `<tr data-pk="${e.pk}">
+            <td>${rowNum}</td>
+            <td>${esc(e.supplier_code)||'—'}</td>
+            <td>${esc(e.supplier_name)||'—'}</td>
+            <td>${esc(e.part_no)||'—'}</td>
+            <td title="${esc(e.part_description)}">${esc(trunc(e.part_description,30))}</td>
+            <td>${val(esc(e.order_qty))}</td>
+            <td>${val(esc(e.uom))}</td>
+            <td>${val(esc(e.unit_price))}</td>
+            <td>${val(esc(e.currency))}</td>
+            <td>${val(esc(e.pic))}</td>
+            <td>${emailLink(e.contact_email)}</td>
+            <td>${emailLink(e.contact_secondary_email)}</td>
+            <td>${val(esc(e.lead_time_days))}</td>
+            <td>${val(esc(e.ship_lead_time_days))}</td>
+            <td>${val(esc(e.quote_uom))}</td>
+            <td>${val(esc(e.coo))}</td>
+            <td>${val(esc(e.quote_currency))}</td>
+            <td>${val(esc(e.unit_price_1))}</td>
+            <td>${val(esc(e.moq_1))}</td>
+            <td>${val(esc(e.unit_price_2))}</td>
+            <td>${val(esc(e.moq_2))}</td>
+            <td>${val(esc(e.unit_price_3))}</td>
+            <td>${val(esc(e.moq_3))}</td>
+            <td>${val(esc(e.lot_size))}</td>
+            <td>${val(esc(e.hts_code))}</td>
+            <td>${val(esc(e.eccn_ear99))}</td>
+            <td class="col-mfr-pn">${val(esc(e.manufacture_part_number))}</td>
+            <td>${val(esc(e.manufacturer_name))}</td>
+            <td title="${esc(e.manufacturer_address)}">${esc(trunc(e.manufacturer_address,30))}</td>
+            <td>${val(esc(e.item_weight_kg))}</td>
+            <td>${val(esc(e.volume_weight_kg))}</td>
+            <td>${yesno('russian_steel_confirmation',e.pk,e.russian_steel_confirmation)}</td>
+            <td>${yesno('hazmat',e.pk,e.hazmat)}</td>
+            <td>${yesno('un_sds_msds',e.pk,e.un_sds_msds)}</td>
+            <td>${prodRegSel}</td>
+            <td>${yesno('eol_status',e.pk,e.eol_status)}</td>
+            <td title="${esc(e.alternative_parts)}">${esc(trunc(e.alternative_parts,25))}</td>
+            <td>${val(esc(e.alternative_part_no))}</td>
+            <td title="${esc(e.mfg_address_postal_cn)}">${esc(trunc(e.mfg_address_postal_cn,25))}</td>
+            <td>${yesno('uflpa_compliance',e.pk,e.uflpa_compliance)}</td>
+            <td>${val(esc(e.uflpa_start_date))}</td>
+            <td>${val(esc(e.uflpa_expiry_date))}</td>
+            <td>${yesno('usmca_certificate',e.pk,e.usmca_certificate)}</td>
+            <td>${val(esc(e.usmca_start_date))}</td>
+            <td>${val(esc(e.usmca_expiry_date))}</td>
+            <td class="status-cell" style="min-width:150px;">${statusCell}</td>
+            <td class="comments-cell" style="min-width:200px;">${commentsCell}</td>
+            <td class="text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-action me-1"
+                        onclick="openEditModal(${e.pk},this.closest('tr'))">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-action"
+                        data-bs-toggle="modal" data-bs-target="#deleteModal"
+                        data-pk="${e.pk}"
+                        data-label="${esc(e.supplier_name)} — ${esc(e.part_no)}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>`;
     }
 
-    function rowSearchText(row) {
-        return Array.from(row.cells).map(cellText).join(' ');
+    // ── Bind interactive events on newly inserted rows ────────────
+    function bindRowEvents(tr) {
+        tr.querySelectorAll('.inline-select:not(.status-sel)').forEach(function(sel) {
+            sel.dataset.original = sel.value;
+            sel.addEventListener('change', function() {
+                const pk = this.dataset.pk, field = this.dataset.field;
+                const value = this.value, prev = this.dataset.original;
+                this.classList.add('is-saving');
+                fetch('/patch/' + pk + '/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify({ field, value }),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    this.classList.remove('is-saving');
+                    if (data.ok) {
+                        this.dataset.original = value;
+                        this.classList.add('is-saved');
+                        setTimeout(() => this.classList.remove('is-saved'), 1500);
+                        showToast('Saved', true);
+                    } else { this.value = prev; showToast('Save failed', false); }
+                })
+                .catch(() => { this.classList.remove('is-saving'); this.value = prev; showToast('Save failed', false); });
+            });
+        });
+
+        tr.querySelectorAll('.status-sel').forEach(function(sel) {
+            sel.addEventListener('change', function() {
+                const inp = this.closest('td').querySelector('.status-txt');
+                if (this.value === 'Others') { inp.style.display = 'block'; inp.focus(); }
+                else { inp.style.display = 'none'; inp.value = ''; patchField(this.dataset.pk, 'status', this.value, this); }
+            });
+        });
+
+        tr.querySelectorAll('.status-txt').forEach(function(inp) {
+            inp.addEventListener('keydown', function(ev) {
+                if (ev.key === 'Enter') { ev.preventDefault(); patchField(this.dataset.pk, 'status', this.value.trim(), this); this.blur(); }
+            });
+        });
+
+        tr.querySelectorAll('.comments-txt').forEach(function(txt) {
+            txt.addEventListener('blur', function() { patchField(this.dataset.pk, 'comments', this.value.trim(), this); });
+            txt.addEventListener('input', function() {
+                if (this === document.activeElement) {
+                    this.style.height = 'auto';
+                    this.style.height = Math.min(this.scrollHeight, 300) + 'px';
+                }
+            });
+        });
     }
 
-    function totalPages() {
-        if (pageSize === 'all') return 1;
-        return Math.ceil(filteredRows.length / pageSize);
-    }
+    // ── Fetch page from server ────────────────────────────────────
+    function fetchData() {
+        const ps = pageSize === 'all' ? 'all' : pageSize;
+        const url = `/data/?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=${ps}&sort_col=${sortCol}&sort_dir=${sortDir}`;
+        tbody.innerHTML = '<tr><td colspan="48" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…</td></tr>';
 
-    function render() {
-        const total = filteredRows.length;
-        const tp = totalPages();
-        if (currentPage > tp) currentPage = tp;
-        if (currentPage < 1) currentPage = 1;
+        fetch(url)
+        .then(r => r.json())
+        .then(function(data) {
+            updateCountUI(data.total);
+            if (data.entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="48" class="text-center text-muted py-5">No entries found. Click <strong>+ Add New Item</strong> to get started.</td></tr>';
+                pageInfo.textContent = searchQuery ? 'No results found' : '';
+                pageNavTop.innerHTML = '';
+                pageNavBot.innerHTML = '';
+                return;
+            }
+            const offset = (ps === 'all') ? 0 : (data.page - 1) * parseInt(ps);
+            tbody.innerHTML = data.entries.map((e, i) => buildRow(e, offset + i + 1)).join('');
+            tbody.querySelectorAll('tr[data-pk]').forEach(bindRowEvents);
 
-        allRows.forEach(r => r.style.display = 'none');
-        filteredRows.forEach(function(row, i) {
-            if (pageSize === 'all') {
-                row.style.display = '';
+            if (ps === 'all') {
+                pageInfo.textContent = 'Showing all ' + data.total + ' entries';
             } else {
-                const start = (currentPage - 1) * pageSize;
-                const end = start + pageSize;
-                if (i >= start && i < end) row.style.display = '';
+                const start = (data.page - 1) * parseInt(ps) + 1;
+                const end   = Math.min(data.page * parseInt(ps), data.total);
+                pageInfo.textContent = `Showing ${start}–${end} of ${data.total} entries` + (searchQuery ? ' (filtered)' : '');
             }
+            buildNav(pageNavTop, data.pages, data.page);
+            buildNav(pageNavBot,  data.pages, data.page);
+        })
+        .catch(function() {
+            tbody.innerHTML = '<tr><td colspan="48" class="text-center text-danger py-4">Failed to load data. Please refresh the page.</td></tr>';
         });
-
-        if (emptyRow) emptyRow.style.display = (total === 0) ? '' : 'none';
-
-        if (total === 0) {
-            pageInfo.textContent = 'No results found';
-        } else if (pageSize === 'all') {
-            pageInfo.textContent = 'Showing all ' + total + ' entries';
-        } else {
-            const start = (currentPage - 1) * pageSize + 1;
-            const end = Math.min(currentPage * pageSize, total);
-            pageInfo.textContent = 'Showing ' + start + '–' + end + ' of ' + total +
-                (filteredRows.length < allRows.length ? ' entries (filtered)' : ' entries');
-        }
-
-        buildNav(pageNavTop, tp);
-        buildNav(pageNavBottom, tp);
     }
 
-    function sort(colIdx) {
-        if (currentSort.col === colIdx) {
-            currentSort.asc = !currentSort.asc;
-        } else {
-            currentSort.col = colIdx;
-            currentSort.asc = true;
-        }
-
-        document.querySelectorAll('.rfq-table th.sortable').forEach((th, i) => {
-            th.classList.remove('asc', 'desc');
-            if (i === colIdx) th.classList.add(currentSort.asc ? 'asc' : 'desc');
-        });
-
-        filteredRows.sort((a, b) => {
-            let valA = cellText(a.cells[colIdx]);
-            let valB = cellText(b.cells[colIdx]);
-
-            let numA = parseFloat(valA.replace(/[^0-9.-]+/g, ''));
-            let numB = parseFloat(valB.replace(/[^0-9.-]+/g, ''));
-            if (!isNaN(numA) && !isNaN(numB) && valA.match(/^[0-9,.-]+$/)) {
-                return currentSort.asc ? numA - numB : numB - numA;
-            }
-
-            if (valA < valB) return currentSort.asc ? -1 : 1;
-            if (valA > valB) return currentSort.asc ? 1 : -1;
-            return 0;
-        });
-
-        currentPage = 1;
-        render();
+    function updateCountUI(total) {
+        const badge = document.getElementById('entryCountBadge');
+        if (badge) badge.textContent = total + ' entr' + (total === 1 ? 'y' : 'ies');
+        const countSpan = document.getElementById('clearAllCount');
+        if (countSpan) countSpan.textContent = total;
+        const clearBtn = document.getElementById('clearAllBtn');
+        if (clearBtn) clearBtn.disabled = (total === 0);
     }
 
-    function buildNav(container, tp) {
+    // ── Pagination nav builder ────────────────────────────────────
+    function buildNav(container, totalPages, page) {
         container.innerHTML = '';
-        if (tp <= 1) return;
-        addBtn(container, '‹', currentPage > 1, function() { currentPage--; render(); });
+        if (totalPages <= 1) return;
+        addBtn(container, '‹', page > 1, function() { currentPage--; fetchData(); });
         var pages = [];
-        if (tp <= 7) {
-            for (var i = 1; i <= tp; i++) pages.push(i);
-        } else {
+        if (totalPages <= 7) { for (var i = 1; i <= totalPages; i++) pages.push(i); }
+        else {
             pages.push(1);
-            if (currentPage > 3) pages.push('...');
-            var s = Math.max(2, currentPage - 1);
-            var e = Math.min(tp - 1, currentPage + 1);
+            if (page > 3) pages.push('...');
+            var s = Math.max(2, page - 1), e = Math.min(totalPages - 1, page + 1);
             for (var i = s; i <= e; i++) pages.push(i);
-            if (currentPage < tp - 2) pages.push('...');
-            pages.push(tp);
+            if (page < totalPages - 2) pages.push('...');
+            pages.push(totalPages);
         }
         pages.forEach(function(p) {
             if (p === '...') {
                 var span = document.createElement('span');
-                span.className = 'text-muted px-1';
-                span.textContent = '…';
+                span.className = 'text-muted px-1'; span.textContent = '…';
                 container.appendChild(span);
             } else {
-                addBtn(container, p, true, function() { currentPage = p; render(); }, p === currentPage);
+                addBtn(container, p, true, (function(pg) { return function() { currentPage = pg; fetchData(); }; })(p), p === page);
             }
         });
-        addBtn(container, '›', currentPage < tp, function() { currentPage++; render(); });
+        addBtn(container, '›', page < totalPages, function() { currentPage++; fetchData(); });
     }
 
     function addBtn(container, label, enabled, onclick, active) {
@@ -1190,35 +1106,40 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
         container.appendChild(btn);
     }
 
-    document.querySelectorAll('.rfq-table th.sortable').forEach((th, i) => {
-        th.addEventListener('click', () => sort(i));
+    // ── Sort headers ──────────────────────────────────────────────
+    document.querySelectorAll('.rfq-table th.sortable').forEach(function(th, i) {
+        th.addEventListener('click', function() {
+            if (sortCol === i) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+            else { sortCol = i; sortDir = 'asc'; }
+            document.querySelectorAll('.rfq-table th.sortable').forEach(function(t, j) {
+                t.classList.remove('asc','desc');
+                if (j === i) t.classList.add(sortDir);
+            });
+            currentPage = 1;
+            fetchData();
+        });
     });
 
     sizeSelect.addEventListener('change', function() {
-        var val = this.value;
-        pageSize = val === 'all' ? 'all' : parseInt(val, 10);
+        pageSize = this.value === 'all' ? 'all' : parseInt(this.value, 10);
         currentPage = 1;
-        render();
+        fetchData();
     });
 
     searchInput.addEventListener('input', function() {
-        const query = this.value.toLowerCase().trim();
-        if (!query) {
-            filteredRows = [...allRows];
-        } else {
-            filteredRows = allRows.filter(row => rowSearchText(row).includes(query));
-        }
-        if (currentSort.col !== -1) {
-            const saveCol = currentSort.col;
-            currentSort.col = -1;
-            sort(saveCol);
-        } else {
+        clearTimeout(searchTimer);
+        var q = this.value.trim();
+        searchTimer = setTimeout(function() {
+            searchQuery = q;
             currentPage = 1;
-            render();
-        }
+            fetchData();
+        }, 300);
     });
 
-    render();
+    // Called after add/delete/clear to refresh without page reload
+    window.reloadTable = function() { fetchData(); };
+
+    fetchData();
 })();
 </script>
 {% endblock %}
