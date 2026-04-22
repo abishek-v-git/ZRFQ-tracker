@@ -58,6 +58,8 @@ BULK_COLUMN_MAP = {
     'USMCA Certificate (CA/MX Only)':   'usmca_certificate',
     'USMCA Start Date':                 'usmca_start_date',
     'USMCA Expiry Date':                'usmca_expiry_date',
+    'Status':                           'status',
+    'Comments':                         'comments',
 }
 
 # Known alternative spellings / truncations in supplier Excel templates
