@@ -6,7 +6,7 @@ SECRET_KEY = 'django-insecure-rfq-tracker-zeiss-2026-change-in-production'
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['zrfqtracker.inesssolutions.net','44.250.217.79']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -51,11 +51,11 @@ WSGI_APPLICATION = 'rfq_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ZRFQ',      
-        'USER': 'postgres',
-        'PASSWORD': '2024',
-        'HOST': 'localhost',             
-        'PORT': '5432',                   
+        'NAME': 'zrfq',      
+        'USER': 'iness',
+        'PASSWORD': 'Iness*123',
+        'HOST': 'postgres.coussk3bjb0m.us-west-2.rds.amazonaws.com',             
+        'PORT': '5432',
     }
 }
 
