@@ -789,6 +789,23 @@ def rfq_clear_all(request):
 
 
 @login_required
+def rfq_bulk_status(request):
+    """Update status on a list of RFQ entries via AJAX JSON POST."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data   = json.loads(request.body)
+        pks    = [int(p) for p in data.get('pks', [])]
+        status = (data.get('status') or '').strip()
+    except (json.JSONDecodeError, ValueError, AttributeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid request.'}, status=400)
+    if not pks:
+        return JsonResponse({'ok': False, 'error': 'No rows selected.'}, status=400)
+    updated = RFQEntry.objects.filter(pk__in=pks).update(status=status)
+    return JsonResponse({'ok': True, 'updated': updated})
+
+
+@login_required
 def rfq_patch(request, pk):
     """Inline-update a single dropdown field via AJAX."""
     if request.method != 'POST':

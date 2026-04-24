@@ -38,7 +38,7 @@
     /* Floating Comments Explorer */
     .comments-cell { position: relative; }
     .comment-container { position: relative; width: 100%; }
-    
+
     .comments-txt {
         width: 100%;
         min-height: 28px;
@@ -48,10 +48,9 @@
         resize: none;
         overflow: hidden;
         transition: box-shadow 0.2s, border-color 0.2s;
-        padding-right: 25px; /* Space for the expand icon */
+        padding-right: 25px;
     }
 
-    /* The "Hover" expansion effect on focus */
     .comments-txt:focus {
         position: absolute;
         top: 0;
@@ -59,7 +58,7 @@
         width: 320px;
         min-height: 120px;
         max-height: 400px;
-        z-index: 1100; /* High enough to clear everything */
+        z-index: 1100;
         overflow-y: auto;
         box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         background: #fff !important;
@@ -121,6 +120,44 @@
     /* Stacking fix for sticky columns */
     .status-cell:focus-within { z-index: 2000 !important; }
     .comments-cell:focus-within { z-index: 2000 !important; }
+
+    /* Checkbox column */
+    .col-check { width: 36px; min-width: 36px; text-align: center; }
+
+    /* Bulk action bar */
+    #bulkBar {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        background: #003366;
+        color: #fff;
+        padding: 10px 24px;
+        z-index: 8000;
+        display: none;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.2);
+    }
+    #bulkBar.visible { display: flex; }
+    #bulkBar .bulk-status-select {
+        background: #fff;
+        color: #333;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 13px;
+        min-width: 180px;
+    }
+    #bulkBar .bulk-others-input {
+        background: #fff;
+        color: #333;
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 13px;
+        width: 160px;
+        display: none;
+    }
+
 </style>
 
 <!-- Top Action Bar -->
@@ -129,7 +166,6 @@
         <i class="bi bi-plus-lg me-1"></i>Add New Item
     </button>
 
-    <!-- Sub-buttons, hidden until Add New Item is clicked -->
     <div id="addSubButtons" class="d-none d-flex gap-2">
         <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addModal">
             <i class="bi bi-ui-checks me-1"></i>Form Entry
@@ -151,7 +187,6 @@
 
 <!-- Pagination Controls (top) -->
 <div class="d-flex align-items-center gap-3 mb-2" style="font-size:13px;">
-    <!-- Search Bar -->
     <div class="input-group input-group-sm" style="width:250px;">
         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
         <input type="text" id="tableSearch" class="form-control border-start-0 ps-0" placeholder="Search entries...">
@@ -177,6 +212,9 @@
         <table class="table table-bordered table-hover rfq-table mb-0">
             <thead>
                 <tr>
+                    <th class="col-check" style="background:#003366;">
+                        <input type="checkbox" class="form-check-input" id="selectAll" title="Select all on this page">
+                    </th>
                     <th class="sortable" data-col="0">#</th>
                     <th class="sortable" data-col="1">Supplier Code</th>
                     <th class="sortable" data-col="2">Supplier Name</th>
@@ -229,7 +267,7 @@
             </thead>
             <tbody id="rfqTbody">
                 <tr id="loadingRow">
-                    <td colspan="48" class="text-center py-4">
+                    <td colspan="49" class="text-center py-4">
                         <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…
                     </td>
                 </tr>
@@ -240,6 +278,27 @@
 
 <!-- Pagination Controls (bottom) -->
 <div class="d-flex align-items-center justify-content-end gap-1 mt-2 mb-3" id="pageNavBottom" style="font-size:13px;"></div>
+
+<!-- ── Bulk Action Bar ── -->
+<div id="bulkBar">
+    <span id="bulkSelCount" style="font-weight:600; white-space:nowrap;"></span>
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <label style="font-size:13px; margin:0; white-space:nowrap;">Set Status:</label>
+    <select class="bulk-status-select" id="bulkStatusSel">
+        <option value="">— No Status —</option>
+        <option value="No Response Yet">No Response Yet</option>
+        <option value="Partially Data Received">Partially Data Received</option>
+        <option value="Completed">Completed</option>
+        <option value="Others">Others…</option>
+    </select>
+    <input type="text" class="bulk-others-input" id="bulkOthersInput" placeholder="Type status…">
+    <button class="btn btn-sm btn-light px-3" id="bulkApplyBtn">
+        <i class="bi bi-check-lg me-1"></i>Apply
+    </button>
+    <button class="btn btn-sm btn-outline-light" onclick="clearSelection()">
+        <i class="bi bi-x-lg me-1"></i>Deselect All
+    </button>
+</div>
 
 <!-- ── Add New Item Modal ── -->
 <div class="modal fade" id="addModal" tabindex="-1">
@@ -253,8 +312,6 @@
                 <form method="post" action="{% url 'rfq_add' %}" id="addForm">
                     {% csrf_token %}
                     <div class="row g-2">
-
-                        <!-- SUPPLIER -->
                         <div class="col-12"><div class="section-heading">Supplier</div></div>
                         <div class="col-md-2"><label class="form-label">Supplier Code *</label>{{ form.supplier_code }}</div>
                         <div class="col-md-3"><label class="form-label">Supplier Name *</label>{{ form.supplier_name }}</div>
@@ -262,7 +319,6 @@
                         <div class="col-md-2"><label class="form-label">Contact Email</label>{{ form.contact_email }}</div>
                         <div class="col-md-3"><label class="form-label">Contact Secondary Email</label>{{ form.contact_secondary_email }}</div>
 
-                        <!-- PART -->
                         <div class="col-12 mt-1"><div class="section-heading">Part</div></div>
                         <div class="col-md-2"><label class="form-label">Part No *</label>{{ form.part_no }}</div>
                         <div class="col-md-4"><label class="form-label">Part Description</label>{{ form.part_description }}</div>
@@ -271,12 +327,10 @@
                         <div class="col-md-2"><label class="form-label">Unit Price</label>{{ form.unit_price }}</div>
                         <div class="col-md-1"><label class="form-label">Currency</label>{{ form.currency }}</div>
 
-                        <!-- LEAD TIMES -->
                         <div class="col-12 mt-1"><div class="section-heading">Lead Times</div></div>
                         <div class="col-md-2"><label class="form-label">Lead Time (days)</label>{{ form.lead_time_days }}</div>
                         <div class="col-md-2"><label class="form-label">Ship Lead Time (days)</label>{{ form.ship_lead_time_days }}</div>
 
-                        <!-- QUOTE DETAILS -->
                         <div class="col-12 mt-1"><div class="section-heading">Quote Details</div></div>
                         <div class="col-md-1"><label class="form-label">UOM</label>{{ form.quote_uom }}</div>
                         <div class="col-md-2"><label class="form-label">COO</label>{{ form.coo }}</div>
@@ -289,12 +343,10 @@
                         <div class="col-md-1"><label class="form-label">MOQ-3</label>{{ form.moq_3 }}</div>
                         <div class="col-md-1"><label class="form-label">Lot Size</label>{{ form.lot_size }}</div>
 
-                        <!-- PRODUCT CODES -->
                         <div class="col-12 mt-1"><div class="section-heading">Product Codes</div></div>
                         <div class="col-md-2"><label class="form-label">HTS Code</label>{{ form.hts_code }}</div>
                         <div class="col-md-2"><label class="form-label">ECCN/EAR99</label>{{ form.eccn_ear99 }}</div>
 
-                        <!-- MANUFACTURER -->
                         <div class="col-12 mt-1"><div class="section-heading">Manufacturer</div></div>
                         <div class="col-md-2"><label class="form-label">Manufacture Part Number</label>{{ form.manufacture_part_number }}</div>
                         <div class="col-md-2"><label class="form-label">Manufacturer Name</label>{{ form.manufacturer_name }}</div>
@@ -302,7 +354,6 @@
                         <div class="col-md-2"><label class="form-label">Item Weight (kg)</label>{{ form.item_weight_kg }}</div>
                         <div class="col-md-2"><label class="form-label">Volume Weight (kg)</label>{{ form.volume_weight_kg }}</div>
 
-                        <!-- COMPLIANCE -->
                         <div class="col-12 mt-1"><div class="section-heading">Compliance</div></div>
                         <div class="col-md-2"><label class="form-label">Russian Steel Confirmation</label>{{ form.russian_steel_confirmation }}</div>
                         <div class="col-md-1"><label class="form-label">Hazmat (Y/N)</label>{{ form.hazmat }}</div>
@@ -312,24 +363,20 @@
                         <div class="col-md-3"><label class="form-label">Alternative Part(s)</label>{{ form.alternative_parts }}</div>
                         <div class="col-md-3"><label class="form-label">Alternative Part No</label>{{ form.alternative_part_no }}</div>
 
-                        <!-- CN ONLY -->
                         <div class="col-12 mt-1"><div class="section-heading">China-Specific (CN Only)</div></div>
                         <div class="col-md-4"><label class="form-label">Mfg Address + Postal</label>{{ form.mfg_address_postal_cn }}</div>
                         <div class="col-md-2"><label class="form-label">UFLPA Compliance Statement</label>{{ form.uflpa_compliance }}</div>
                         <div class="col-md-2"><label class="form-label">UFLPA Start Date</label>{{ form.uflpa_start_date }}</div>
                         <div class="col-md-2"><label class="form-label">UFLPA Expiry Date</label>{{ form.uflpa_expiry_date }}</div>
 
-                        <!-- USMCA -->
                         <div class="col-12 mt-1"><div class="section-heading">USMCA (CA/MX Only)</div></div>
                         <div class="col-md-2"><label class="form-label">USMCA Certificate</label>{{ form.usmca_certificate }}</div>
                         <div class="col-md-2"><label class="form-label">USMCA Start Date</label>{{ form.usmca_start_date }}</div>
                         <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ form.usmca_expiry_date }}</div>
 
-                        <!-- WORKFLOW -->
                         <div class="col-12 mt-1"><div class="section-heading">Workflow</div></div>
                         <div class="col-md-3"><label class="form-label">Status</label>{{ form.status }}</div>
                         <div class="col-md-7"><label class="form-label">Comments</label>{{ form.comments }}</div>
-
                     </div>
                     {% if form.errors %}
                         <div class="alert alert-danger mt-2 py-2">
@@ -421,7 +468,6 @@
                     <p class="mt-2 text-muted small">Loading…</p>
                 </div>
             </div>
-            <!-- Static form rendered server-side for widget HTML; hidden until JS populates & shows it -->
             <template id="editFormTpl">
                 <form id="editForm" novalidate>
                     {% csrf_token %}
@@ -538,7 +584,7 @@
     </div>
 </div>
 
-<!-- ── Long Note Modal (for big emails/comments) ── -->
+<!-- ── Long Note Modal ── -->
 <div class="modal fade" id="longNoteModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -573,10 +619,28 @@ function showToast(msg, ok) {
     bootstrap.Toast.getOrCreateInstance(toast, {delay: 2200}).show();
 }
 
-// ── Toggle Form Entry / Bulk Upload sub-buttons ───────────────────
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function trunc(s, n) {
+    if (!s) return '—';
+    return s.length > n ? s.substring(0, n - 1) + '…' : s;
+}
+function val(v) { return v || '—'; }
+function fmtDate(iso) {
+    if (!iso || iso === '—' || iso === '') return '—';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    const [y, m, d] = parts;
+    return `${d}/${m}/${y}`;
+}
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Toggle Add sub-buttons ────────────────────────────────────────
 function toggleAddButtons() {
-    const sub = document.getElementById('addSubButtons');
-    sub.classList.toggle('d-none');
+    document.getElementById('addSubButtons').classList.toggle('d-none');
 }
 ['addModal', 'bulkUploadModal'].forEach(function(id) {
     document.getElementById(id).addEventListener('hidden.bs.modal', function() {
@@ -600,7 +664,7 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         Array.from(this.files).forEach(function(f) {
             const li = document.createElement('li');
             li.className = 'list-group-item py-1';
-            li.innerHTML = '<i class="bi bi-file-earmark-excel text-success me-2"></i>' + f.name +
+            li.innerHTML = '<i class="bi bi-file-earmark-excel text-success me-2"></i>' + esc(f.name) +
                            ' <span class="text-muted">(' + (f.size / 1024).toFixed(1) + ' KB)</span>';
             list.appendChild(li);
         });
@@ -610,12 +674,19 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
     }
 });
 
-{% if form.errors %}
+if ({% if form.errors %}true{% else %}false{% endif %}) {
     new bootstrap.Modal(document.getElementById('addModal')).show();
-{% endif %}
+}
 
+// ── Status helpers ────────────────────────────────────────────────
+function getStatusClass(status) {
+    if (!status) return 'status-empty';
+    if (status === 'Completed') return 'status-completed';
+    if (status === 'Partially Data Received') return 'status-partial';
+    if (status === 'No Response Yet') return 'status-none';
+    return 'status-others';
+}
 
-// ── Status column: dropdown + free-text "Others" ────────────────
 function patchField(pk, field, value, feedbackEl) {
     if (feedbackEl) feedbackEl.classList.add('is-saving');
     fetch('/patch/' + pk + '/', {
@@ -660,22 +731,6 @@ document.getElementById('longNoteSaveBtn').addEventListener('click', function() 
 var _editRow = null;
 var _editPk  = null;
 
-function fmtDate(iso) {
-    if (!iso || iso === '—' || iso === '') return '—';
-    // iso is YYYY-MM-DD
-    const parts = iso.split('-');
-    if (parts.length !== 3) return iso;
-    const [y, m, d] = parts;
-    return `${d}/${m}/${y}`;
-}
-function truncate(s, n) {
-    if (!s) return '—';
-    return s.length > n ? s.substring(0, n - 1) + '…' : s;
-}
-function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 function openEditModal(pk, rowEl) {
     _editPk  = pk;
     _editRow = rowEl;
@@ -694,7 +749,6 @@ function openEditModal(pk, rowEl) {
         const e = data.entry;
         document.getElementById('editModalTitle').textContent =
             'Edit — ' + (e.supplier_name || '') + ' / ' + (e.part_no || '');
-        // Clone the pre-rendered form template
         const tpl = document.getElementById('editFormTpl');
         body.innerHTML = '';
         body.appendChild(tpl.content.cloneNode(true));
@@ -707,10 +761,7 @@ function openEditModal(pk, rowEl) {
 }
 
 function populateEditForm(e) {
-    function set(id, val) {
-        const el = document.getElementById(id);
-        if (el) el.value = val || '';
-    }
+    function set(id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; }
     set('id_edit-supplier_code',           e.supplier_code);
     set('id_edit-supplier_name',           e.supplier_name);
     set('id_edit-part_no',                 e.part_no);
@@ -718,13 +769,13 @@ function populateEditForm(e) {
     set('id_edit-order_qty',               e.order_qty);
     set('id_edit-uom',                     e.uom);
     set('id_edit-unit_price',              e.unit_price);
-    set('id_edit-currency',               e.currency);
+    set('id_edit-currency',                e.currency);
     set('id_edit-pic',                     e.pic);
     set('id_edit-contact_email',           e.contact_email);
     set('id_edit-contact_secondary_email', e.contact_secondary_email);
     set('id_edit-lead_time_days',          e.lead_time_days);
     set('id_edit-ship_lead_time_days',     e.ship_lead_time_days);
-    set('id_edit-quote_uom',              e.quote_uom);
+    set('id_edit-quote_uom',               e.quote_uom);
     set('id_edit-coo',                     e.coo);
     set('id_edit-quote_currency',          e.quote_currency);
     set('id_edit-unit_price_1',            e.unit_price_1);
@@ -734,7 +785,7 @@ function populateEditForm(e) {
     set('id_edit-unit_price_3',            e.unit_price_3);
     set('id_edit-moq_3',                   e.moq_3);
     set('id_edit-lot_size',                e.lot_size);
-    set('id_edit-hts_code',               e.hts_code);
+    set('id_edit-hts_code',                e.hts_code);
     set('id_edit-eccn_ear99',              e.eccn_ear99);
     set('id_edit-manufacture_part_number', e.manufacture_part_number);
     set('id_edit-manufacturer_name',       e.manufacturer_name);
@@ -755,104 +806,90 @@ function populateEditForm(e) {
     set('id_edit-usmca_certificate',       e.usmca_certificate);
     set('id_edit-usmca_start_date',        e.usmca_start_date);
     set('id_edit-usmca_expiry_date',       e.usmca_expiry_date);
-    set('id_edit-comments',               e.comments);
+    set('id_edit-comments',                e.comments);
 }
 
 function updateRowFromEntry(row, e) {
     const c = row.cells;
-    function txt(idx, val)  { c[idx].textContent = val || '—'; }
-    function trunc(idx, val, n) { c[idx].textContent = truncate(val, n); c[idx].title = val || ''; }
-    function email(idx, val) {
-        c[idx].innerHTML = val ? '<a href="mailto:' + escHtml(val) + '">' + escHtml(val) + '</a>' : '—';
-    }
+    // c[0] = checkbox, c[1] = #, c[2] = supplier_code ...
+    function txt(idx, v)     { c[idx].textContent = v || '—'; }
+    function trn(idx, v, n)  { c[idx].textContent = trunc(v, n); c[idx].title = v || ''; }
+    function eml(idx, v)     { c[idx].innerHTML = v ? '<a href="mailto:' + escHtml(v) + '">' + escHtml(v) + '</a>' : '—'; }
     function ddrop(idx, field) {
         const sel = c[idx].querySelector('select.inline-select');
         if (sel) { sel.value = e[field] || ''; sel.dataset.original = e[field] || ''; }
     }
 
-    txt(1,  e.supplier_code);
-    txt(2,  e.supplier_name);
-    txt(3,  e.part_no);
-    trunc(4, e.part_description, 30);
-    txt(5,  e.order_qty);
-    txt(6,  e.uom);
-    txt(7,  e.unit_price);
-    txt(8,  e.currency);
-    txt(9,  e.pic);
-    email(10, e.contact_email);
-    email(11, e.contact_secondary_email);
-    txt(12, e.lead_time_days);
-    txt(13, e.ship_lead_time_days);
-    txt(14, e.quote_uom);
-    txt(15, e.coo);
-    txt(16, e.quote_currency);
-    txt(17, e.unit_price_1);
-    txt(18, e.moq_1);
-    txt(19, e.unit_price_2);
-    txt(20, e.moq_2);
-    txt(21, e.unit_price_3);
-    txt(22, e.moq_3);
-    txt(23, e.lot_size);
-    txt(24, e.hts_code);
-    txt(25, e.eccn_ear99);
-    txt(26, e.manufacture_part_number);
-    txt(27, e.manufacturer_name);
-    trunc(28, e.manufacturer_address, 30);
-    txt(29, e.item_weight_kg);
-    txt(30, e.volume_weight_kg);
-    ddrop(31, 'russian_steel_confirmation');
-    ddrop(32, 'hazmat');
-    ddrop(33, 'un_sds_msds');
-    ddrop(34, 'product_regulation');
-    ddrop(35, 'eol_status');
-    trunc(36, e.alternative_parts, 25);
-    txt(37, e.alternative_part_no);
-    trunc(38, e.mfg_address_postal_cn, 25);
-    ddrop(39, 'uflpa_compliance');
-    c[40].textContent = fmtDate(e.uflpa_start_date);
-    c[41].textContent = fmtDate(e.uflpa_expiry_date);
-    ddrop(42, 'usmca_certificate');
-    c[43].textContent = fmtDate(e.usmca_start_date);
-    c[44].textContent = fmtDate(e.usmca_expiry_date);
-    // col 45: Status Badge System
+    txt(2,  e.supplier_code);
+    txt(3,  e.supplier_name);
+    txt(4,  e.part_no);
+    trn(5,  e.part_description, 30);
+    txt(6,  e.order_qty);
+    txt(7,  e.uom);
+    txt(8,  e.unit_price);
+    txt(9,  e.currency);
+    txt(10, e.pic);
+    eml(11, e.contact_email);
+    eml(12, e.contact_secondary_email);
+    txt(13, e.lead_time_days);
+    txt(14, e.ship_lead_time_days);
+    txt(15, e.quote_uom);
+    txt(16, e.coo);
+    txt(17, e.quote_currency);
+    txt(18, e.unit_price_1);
+    txt(19, e.moq_1);
+    txt(20, e.unit_price_2);
+    txt(21, e.moq_2);
+    txt(22, e.unit_price_3);
+    txt(23, e.moq_3);
+    txt(24, e.lot_size);
+    txt(25, e.hts_code);
+    txt(26, e.eccn_ear99);
+    txt(27, e.manufacture_part_number);
+    txt(28, e.manufacturer_name);
+    trn(29, e.manufacturer_address, 30);
+    txt(30, e.item_weight_kg);
+    txt(31, e.volume_weight_kg);
+    ddrop(32, 'russian_steel_confirmation');
+    ddrop(33, 'hazmat');
+    ddrop(34, 'un_sds_msds');
+    ddrop(35, 'product_regulation');
+    ddrop(36, 'eol_status');
+    trn(37, e.alternative_parts, 25);
+    txt(38, e.alternative_part_no);
+    trn(39, e.mfg_address_postal_cn, 25);
+    ddrop(40, 'uflpa_compliance');
+    c[41].textContent = fmtDate(e.uflpa_start_date);
+    c[42].textContent = fmtDate(e.uflpa_expiry_date);
+    ddrop(43, 'usmca_certificate');
+    c[44].textContent = fmtDate(e.usmca_start_date);
+    c[45].textContent = fmtDate(e.usmca_expiry_date);
+    // col 46: Status
     (function() {
-        const val = e.status || '';
-        const sel = c[45].querySelector('.status-sel-badge');
-        const inp = c[45].querySelector('.status-txt');
-        const container = c[45].querySelector('.status-badge-container');
-
-        if (sel) sel.value = (['Completed', 'Partially Data Received', 'No Response Yet'].includes(val) || !val) ? val : 'Others';
+        const v = e.status || '';
+        const sel = c[46].querySelector('.status-sel-badge');
+        const inp = c[46].querySelector('.status-txt');
+        const container = c[46].querySelector('.status-badge-container');
+        const FIXED = ['Completed', 'Partially Data Received', 'No Response Yet'];
+        if (sel) sel.value = (FIXED.includes(v) || !v) ? v : 'Others';
         if (inp) {
-            const isOthers = val && !['Completed', 'Partially Data Received', 'No Response Yet'].includes(val);
-            inp.value = isOthers ? val : '';
+            const isOthers = v && !FIXED.includes(v);
+            inp.value = isOthers ? v : '';
             inp.style.display = isOthers ? 'block' : 'none';
         }
-        if (container) {
-            container.className = 'status-badge-container ' + getStatusClass(val);
-        }
+        if (container) container.className = 'status-badge-container ' + getStatusClass(v);
     })();
-
-    // col 46: Comments (free text)
-    if (c[46].querySelector('.comments-txt')) {
-        c[46].querySelector('.comments-txt').value = e.comments || '';
+    // col 47: Comments
+    if (c[47].querySelector('.comments-txt')) {
+        c[47].querySelector('.comments-txt').value = e.comments || '';
     }
 }
 
-function getStatusClass(status) {
-    if (!status) return 'status-empty';
-    if (status === 'Completed') return 'status-completed';
-    if (status === 'Partially Data Received') return 'status-partial';
-    if (status === 'No Response Yet') return 'status-none';
-    return 'status-others';
-}
-
-// Save button triggers form submit
 document.getElementById('editSaveBtn').addEventListener('click', function() {
     const form = document.getElementById('editForm');
     if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
 });
 
-// Delegate edit form submit (form is cloned into modal body dynamically)
 document.getElementById('editModalBody').addEventListener('submit', function(evt) {
     if (evt.target.id !== 'editForm') return;
     evt.preventDefault();
@@ -888,6 +925,106 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
     });
 });
 
+// ── Bulk Status Bar ───────────────────────────────────────────────
+const selectedPks = new Set();
+
+function updateBulkBar() {
+    const bar = document.getElementById('bulkBar');
+    const count = selectedPks.size;
+    if (count > 0) {
+        bar.classList.add('visible');
+        document.getElementById('bulkSelCount').textContent = count + ' row' + (count > 1 ? 's' : '') + ' selected';
+    } else {
+        bar.classList.remove('visible');
+    }
+    // Sync select-all checkbox state
+    const all = document.querySelectorAll('.row-check');
+    const selectAllCb = document.getElementById('selectAll');
+    if (all.length > 0 && selectedPks.size === all.length) {
+        selectAllCb.checked = true;
+        selectAllCb.indeterminate = false;
+    } else if (selectedPks.size === 0) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+    } else {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = true;
+    }
+}
+
+function clearSelection() {
+    selectedPks.clear();
+    document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+    document.getElementById('selectAll').checked = false;
+    document.getElementById('selectAll').indeterminate = false;
+    updateBulkBar();
+}
+
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.row-check').forEach(cb => {
+        cb.checked = this.checked;
+        const pk = parseInt(cb.dataset.pk);
+        if (this.checked) selectedPks.add(pk);
+        else selectedPks.delete(pk);
+    });
+    updateBulkBar();
+});
+
+document.getElementById('bulkStatusSel').addEventListener('change', function() {
+    const inp = document.getElementById('bulkOthersInput');
+    inp.style.display = this.value === 'Others' ? '' : 'none';
+    if (this.value === 'Others') inp.focus();
+});
+
+document.getElementById('bulkApplyBtn').addEventListener('click', function() {
+    if (!selectedPks.size) return;
+    const selVal = document.getElementById('bulkStatusSel').value;
+    const otherVal = document.getElementById('bulkOthersInput').value.trim();
+    const status = selVal === 'Others' ? otherVal : selVal;
+
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+
+    fetch('{% url "rfq_bulk_status" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ pks: Array.from(selectedPks), status: status }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Apply';
+        if (data.ok) {
+            // Update visible rows in-place
+            selectedPks.forEach(pk => {
+                const row = document.querySelector(`tr[data-pk="${pk}"]`);
+                if (!row) return;
+                const c = row.cells;
+                const FIXED = ['Completed', 'Partially Data Received', 'No Response Yet'];
+                const statusCell = c[46];
+                const container = statusCell.querySelector('.status-badge-container');
+                const sel       = statusCell.querySelector('.status-sel-badge');
+                const inp       = statusCell.querySelector('.status-txt');
+                if (container) container.className = 'status-badge-container ' + getStatusClass(status);
+                if (sel) sel.value = FIXED.includes(status) || !status ? status : 'Others';
+                if (inp) { inp.value = (!FIXED.includes(status) && status) ? status : ''; inp.style.display = (!FIXED.includes(status) && status) ? 'block' : 'none'; }
+            });
+            showToast(data.updated + ' row(s) updated', true);
+            clearSelection();
+            document.getElementById('bulkStatusSel').value = '';
+            document.getElementById('bulkOthersInput').style.display = 'none';
+            document.getElementById('bulkOthersInput').value = '';
+        } else {
+            showToast(data.error || 'Update failed', false);
+        }
+    })
+    .catch(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Apply';
+        showToast('Network error', false);
+    });
+});
+
 // ── Server-side AJAX Pagination, Search & Sort ───────────────────
 (function() {
     const tbody       = document.getElementById('rfqTbody');
@@ -904,15 +1041,8 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
     let sortDir      = 'asc';
     let searchTimer  = null;
 
-    // ── Row builder ───────────────────────────────────────────────
-    function esc(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function trunc(s, n) {
-        if (!s) return '—';
-        return s.length > n ? s.substring(0, n - 1) + '…' : s;
-    }
-    function val(v) { return v || '—'; }
+    function emailLink(e) { return e ? `<a href="mailto:${esc(e)}">${esc(e)}</a>` : '—'; }
+
     function yesno(field, pk, v) {
         return `<select class="inline-select" data-pk="${pk}" data-field="${field}">
             <option value="">—</option>
@@ -920,7 +1050,6 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
             <option value="No"${v==='No'?' selected':''}>No</option>
         </select>`;
     }
-    function emailLink(e) { return e ? `<a href="mailto:${esc(e)}">${esc(e)}</a>` : '—'; }
 
     function buildRow(e, rowNum) {
         const FIXED = ['No Response Yet','Partially Data Received','Completed'];
@@ -956,7 +1085,10 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
             </button>
         </div>`;
 
+        const isChecked = selectedPks.has(e.pk);
+
         return `<tr data-pk="${e.pk}">
+            <td class="col-check"><input type="checkbox" class="form-check-input row-check" data-pk="${e.pk}"${isChecked?' checked':''}></td>
             <td>${rowNum}</td>
             <td>${esc(e.supplier_code)||'—'}</td>
             <td>${esc(e.supplier_name)||'—'}</td>
@@ -1019,8 +1151,15 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
         </tr>`;
     }
 
-    // ── Bind interactive events on newly inserted rows ────────────
     function bindRowEvents(tr) {
+        // Checkbox
+        tr.querySelector('.row-check').addEventListener('change', function() {
+            const pk = parseInt(this.dataset.pk);
+            if (this.checked) selectedPks.add(pk);
+            else selectedPks.delete(pk);
+            updateBulkBar();
+        });
+
         tr.querySelectorAll('.inline-select:not(.status-sel)').forEach(function(sel) {
             sel.dataset.original = sel.value;
             sel.addEventListener('change', function() {
@@ -1087,18 +1226,17 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
         });
     }
 
-    // ── Fetch page from server ────────────────────────────────────
     function fetchData() {
         const ps = pageSize === 'all' ? 'all' : pageSize;
         const url = `/data/?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=${ps}&sort_col=${sortCol}&sort_dir=${sortDir}`;
-        tbody.innerHTML = '<tr><td colspan="48" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="49" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…</td></tr>';
 
         fetch(url)
         .then(r => r.json())
         .then(function(data) {
             updateCountUI(data.total);
             if (data.entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="48" class="text-center text-muted py-5">No entries found. Click <strong>+ Add New Item</strong> to get started.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="49" class="text-center text-muted py-5">No entries found. Click <strong>+ Add New Item</strong> to get started.</td></tr>';
                 pageInfo.textContent = searchQuery ? 'No results found' : '';
                 pageNavTop.innerHTML = '';
                 pageNavBot.innerHTML = '';
@@ -1107,6 +1245,7 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
             const offset = (ps === 'all') ? 0 : (data.page - 1) * parseInt(ps);
             tbody.innerHTML = data.entries.map((e, i) => buildRow(e, offset + i + 1)).join('');
             tbody.querySelectorAll('tr[data-pk]').forEach(bindRowEvents);
+            updateBulkBar();
 
             if (ps === 'all') {
                 pageInfo.textContent = 'Showing all ' + data.total + ' entries';
@@ -1119,7 +1258,7 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
             buildNav(pageNavBot,  data.pages, data.page);
         })
         .catch(function() {
-            tbody.innerHTML = '<tr><td colspan="48" class="text-center text-danger py-4">Failed to load data. Please refresh the page.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="49" class="text-center text-danger py-4">Failed to load data. Please refresh the page.</td></tr>';
         });
     }
 
@@ -1132,7 +1271,6 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
         if (clearBtn) clearBtn.disabled = (total === 0);
     }
 
-    // ── Pagination nav builder ────────────────────────────────────
     function buildNav(container, totalPages, page) {
         container.innerHTML = '';
         if (totalPages <= 1) return;
@@ -1170,7 +1308,6 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
         container.appendChild(btn);
     }
 
-    // ── Sort headers ──────────────────────────────────────────────
     document.querySelectorAll('.rfq-table th.sortable').forEach(function(th, i) {
         th.addEventListener('click', function() {
             if (sortCol === i) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
@@ -1200,9 +1337,7 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
         }, 300);
     });
 
-    // Called after add/delete/clear to refresh without page reload
     window.reloadTable = function() { fetchData(); };
-
     fetchData();
 })();
 </script>

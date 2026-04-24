@@ -8,6 +8,7 @@ urlpatterns = [
     path('edit/<int:pk>/', views.rfq_edit, name='rfq_edit'),
     path('export/', views.rfq_export, name='rfq_export'),
     path('bulk-upload/', views.rfq_bulk_upload, name='rfq_bulk_upload'),
+    path('bulk-status/', views.rfq_bulk_status, name='rfq_bulk_status'),
     path('clear-all/', views.rfq_clear_all, name='rfq_clear_all'),
     path('patch/<int:pk>/', views.rfq_patch, name='rfq_patch'),
     path('edit-json/<int:pk>/', views.rfq_edit_json, name='rfq_edit_json'),
