@@ -1,6 +1,47 @@
 from django.db import models
 
 
+class Supplier(models.Model):
+    supplier_code = models.CharField(max_length=100, unique=True, verbose_name='Supplier Code')
+    supplier_company_name = models.CharField(max_length=255, verbose_name='Supplier Company Name')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['supplier_code']
+        verbose_name = 'Supplier'
+        verbose_name_plural = 'Suppliers'
+
+    def __str__(self):
+        return f"{self.supplier_code} — {self.supplier_company_name}"
+
+
+class SupplierContact(models.Model):
+    CONTACT_TYPE_CHOICES = [
+        ('PO Confirmation', 'PO Confirmation'),
+        ('RFQ - Request for Quotation', 'RFQ - Request for Quotation'),
+        ('Returns & Claims', 'Returns & Claims'),
+        ('Quality', 'Quality'),
+        ('Accounts Receivable', 'Accounts Receivable'),
+        ('Escalation', 'Escalation'),
+    ]
+
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, related_name='contacts')
+    contact_type = models.CharField(max_length=100, choices=CONTACT_TYPE_CHOICES, verbose_name='Contact Type')
+    name = models.CharField(max_length=255, blank=True, verbose_name='Name')
+    email = models.CharField(max_length=255, blank=True, verbose_name='Email')
+    phone = models.CharField(max_length=100, blank=True, verbose_name='Phone')
+    role_title = models.CharField(max_length=255, blank=True, verbose_name='Role / Title')
+
+    class Meta:
+        ordering = ['contact_type', 'id']
+        verbose_name = 'Supplier Contact'
+        verbose_name_plural = 'Supplier Contacts'
+
+    def __str__(self):
+        return f"{self.supplier.supplier_code} — {self.contact_type}: {self.name}"
+
+
 class RFQEntry(models.Model):
 
     # ── Supplier ──────────────────────────────────────────────────────────────

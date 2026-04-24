@@ -12,4 +12,10 @@ urlpatterns = [
     path('patch/<int:pk>/', views.rfq_patch, name='rfq_patch'),
     path('edit-json/<int:pk>/', views.rfq_edit_json, name='rfq_edit_json'),
     path('data/', views.rfq_data, name='rfq_data'),
+    # Supplier Info
+    path('suppliers/', views.supplier_list, name='supplier_list'),
+    path('suppliers/data/', views.supplier_data, name='supplier_data'),
+    path('suppliers/save/', views.supplier_save, name='supplier_save'),
+    path('suppliers/delete/<int:pk>/', views.supplier_delete, name='supplier_delete'),
+    path('suppliers/upload-template/', views.supplier_template_upload, name='supplier_template_upload'),
 ]

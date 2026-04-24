@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
-from .models import RFQEntry
+from .models import RFQEntry, Supplier, SupplierContact
 from .forms import RFQEntryForm
 
 import openpyxl
@@ -353,13 +353,126 @@ def rfq_edit(request, pk):
 
 @login_required
 def rfq_export(request):
-    entries = RFQEntry.objects.all()
+    entries   = RFQEntry.objects.all()
+    suppliers = Supplier.objects.prefetch_related('contacts').all()
 
     wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = 'RFQ Tracker'
 
-    headers = [
+    # ── Styles ────────────────────────────────────────────────────────────────
+    hdr_fill  = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
+    hdr_font  = Font(bold=True, color='FFFFFF', size=11)
+    sec_fill  = PatternFill(start_color='1F3864', end_color='1F3864', fill_type='solid')
+    sec_font  = Font(bold=True, color='FFFFFF', size=11)
+    lbl_font  = Font(bold=True, size=10)
+    title_font = Font(bold=True, color='FFFFFF', size=13)
+    title_fill = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
+    mfr_fill  = PatternFill(start_color='FFFBEA', end_color='FFFBEA', fill_type='solid')
+    center    = Alignment(horizontal='center', vertical='center')
+    left      = Alignment(horizontal='left',   vertical='center')
+
+    # ── Sheet 1: Info ─────────────────────────────────────────────────────────
+    ws_info = wb.active
+    ws_info.title = 'Info'
+
+    if not suppliers.exists():
+        # Leave sheet empty with a placeholder note
+        ws_info['A1'] = 'No supplier info available.'
+        ws_info['A1'].font = Font(italic=True, color='888888')
+    else:
+        # Title row
+        ws_info.merge_cells('A1:F1')
+        t = ws_info['A1']
+        t.value = 'ZEISS — Supplier Data Collection Form  |  Supplier Info & Contacts'
+        t.font  = title_font
+        t.fill  = title_fill
+        t.alignment = center
+        ws_info.row_dimensions[1].height = 22
+
+        current_row = 2
+
+        for sup_idx, supplier in enumerate(suppliers):
+            contacts = list(supplier.contacts.all())
+
+            # Blank separator between suppliers (skip before first)
+            if sup_idx > 0:
+                current_row += 1
+
+            # ── Section A: Supplier General ───────────────────────────────
+            ws_info.merge_cells(f'A{current_row}:F{current_row}')
+            sec_a = ws_info[f'A{current_row}']
+            sec_a.value = 'A  ·  SUPPLIER GENERAL'
+            sec_a.font  = sec_font
+            sec_a.fill  = sec_fill
+            sec_a.alignment = left
+            ws_info.row_dimensions[current_row].height = 18
+            current_row += 1
+
+            # Supplier Code row
+            ws_info[f'A{current_row}'] = 'Supplier Code'
+            ws_info[f'A{current_row}'].font = lbl_font
+            ws_info.merge_cells(f'B{current_row}:F{current_row}')
+            ws_info[f'B{current_row}'] = supplier.supplier_code
+            current_row += 1
+
+            # Company Name row
+            ws_info[f'A{current_row}'] = 'Supplier Company Name:'
+            ws_info[f'A{current_row}'].font = lbl_font
+            ws_info.merge_cells(f'B{current_row}:F{current_row}')
+            ws_info[f'B{current_row}'] = supplier.supplier_company_name
+            current_row += 1
+
+            current_row += 1  # blank row
+
+            # ── Section B: Contact Information ────────────────────────────
+            ws_info.merge_cells(f'A{current_row}:F{current_row}')
+            sec_b = ws_info[f'A{current_row}']
+            sec_b.value = 'B  ·  CONTACT INFORMATION  |  One row per person  ·  Repeat Contact Type for multiple contacts'
+            sec_b.font  = sec_font
+            sec_b.fill  = sec_fill
+            sec_b.alignment = left
+            ws_info.row_dimensions[current_row].height = 18
+            current_row += 1
+
+            # Contact table headers
+            contact_headers = ['#', 'Contact Type', 'Name', 'Email', 'Phone', 'Role / Title']
+            for ci, ch in enumerate(contact_headers, start=1):
+                cell = ws_info.cell(row=current_row, column=ci, value=ch)
+                cell.font = Font(bold=True, color='FFFFFF', size=10)
+                cell.fill = hdr_fill
+                cell.alignment = center
+            ws_info.row_dimensions[current_row].height = 16
+            current_row += 1
+
+            # Contact rows — show all 6 types, filled or blank
+            contact_map = {}
+            for c in contacts:
+                contact_map.setdefault(c.contact_type, []).append(c)
+
+            row_num = 1
+            for ct, _ in SupplierContact.CONTACT_TYPE_CHOICES:
+                ct_contacts = contact_map.get(ct, [None])
+                for c in ct_contacts:
+                    ws_info.cell(row=current_row, column=1, value=row_num)
+                    ws_info.cell(row=current_row, column=2, value=ct)
+                    ws_info.cell(row=current_row, column=3, value=c.name       if c else '')
+                    ws_info.cell(row=current_row, column=4, value=c.email      if c else '')
+                    ws_info.cell(row=current_row, column=5, value=c.phone      if c else '')
+                    ws_info.cell(row=current_row, column=6, value=c.role_title if c else '')
+                    current_row += 1
+                    row_num += 1
+
+        # Column widths for Info sheet
+        ws_info.column_dimensions['A'].width = 26
+        ws_info.column_dimensions['B'].width = 32
+        ws_info.column_dimensions['C'].width = 22
+        ws_info.column_dimensions['D'].width = 30
+        ws_info.column_dimensions['E'].width = 18
+        ws_info.column_dimensions['F'].width = 22
+
+    # ── Sheet 2: Materials ────────────────────────────────────────────────────
+    ws_mat = wb.create_sheet(title='Materials')
+
+    mat_headers = [
         'Supplier Code', 'Supplier Name', 'Part No', 'Part Description',
         'Order Qty', 'UOM', 'Unit Price', 'Currency',
         'PIC', 'Contact Email', 'Contact Secondary Email',
@@ -378,15 +491,11 @@ def rfq_export(request):
         'Status', 'Comments',
     ]
 
-    header_fill = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
-    header_font = Font(bold=True, color='FFFFFF', size=11)
-    mfr_fill = PatternFill(start_color='FFFBEA', end_color='FFFBEA', fill_type='solid')
-
-    for col_idx, header in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+    for col_idx, header in enumerate(mat_headers, start=1):
+        cell = ws_mat.cell(row=1, column=col_idx, value=header)
+        cell.font      = hdr_font
+        cell.fill      = hdr_fill
+        cell.alignment = center
 
     for row_idx, entry in enumerate(entries, start=2):
         row = [
@@ -394,32 +503,32 @@ def rfq_export(request):
             entry.supplier_name,
             entry.part_no,
             entry.part_description,
-            float(entry.order_qty) if entry.order_qty is not None else '',
+            float(entry.order_qty)       if entry.order_qty       is not None else '',
             entry.uom,
-            float(entry.unit_price) if entry.unit_price is not None else '',
+            float(entry.unit_price)      if entry.unit_price      is not None else '',
             entry.currency,
             entry.pic,
             entry.contact_email,
             entry.contact_secondary_email,
-            entry.lead_time_days or '',
-            entry.ship_lead_time_days or '',
+            entry.lead_time_days         or '',
+            entry.ship_lead_time_days    or '',
             entry.quote_uom,
             entry.coo,
             entry.quote_currency,
-            float(entry.unit_price_1) if entry.unit_price_1 is not None else '',
-            float(entry.moq_1) if entry.moq_1 is not None else '',
-            float(entry.unit_price_2) if entry.unit_price_2 is not None else '',
-            float(entry.moq_2) if entry.moq_2 is not None else '',
-            float(entry.unit_price_3) if entry.unit_price_3 is not None else '',
-            float(entry.moq_3) if entry.moq_3 is not None else '',
-            float(entry.lot_size) if entry.lot_size is not None else '',
+            float(entry.unit_price_1)    if entry.unit_price_1    is not None else '',
+            float(entry.moq_1)           if entry.moq_1           is not None else '',
+            float(entry.unit_price_2)    if entry.unit_price_2    is not None else '',
+            float(entry.moq_2)           if entry.moq_2           is not None else '',
+            float(entry.unit_price_3)    if entry.unit_price_3    is not None else '',
+            float(entry.moq_3)           if entry.moq_3           is not None else '',
+            float(entry.lot_size)        if entry.lot_size        is not None else '',
             entry.hts_code,
             entry.eccn_ear99,
             entry.manufacture_part_number,
             entry.manufacturer_name,
             entry.manufacturer_address,
-            float(entry.item_weight_kg) if entry.item_weight_kg is not None else '',
-            float(entry.volume_weight_kg) if entry.volume_weight_kg is not None else '',
+            float(entry.item_weight_kg)  if entry.item_weight_kg  is not None else '',
+            float(entry.volume_weight_kg)if entry.volume_weight_kg is not None else '',
             entry.russian_steel_confirmation,
             entry.hazmat,
             entry.un_sds_msds,
@@ -438,23 +547,22 @@ def rfq_export(request):
             entry.comments,
         ]
         for col_idx, value in enumerate(row, start=1):
-            cell = ws.cell(row=row_idx, column=col_idx, value=value)
-            # Highlight Manufacture Part Number column (col 27)
-            if col_idx == 27:
+            cell = ws_mat.cell(row=row_idx, column=col_idx, value=value)
+            if col_idx == 26:   # Manufacture Part Number
                 cell.fill = mfr_fill
 
-    # Auto-fit column widths
-    for col_idx, header in enumerate(headers, start=1):
+    # Auto-fit Materials columns
+    for col_idx, header in enumerate(mat_headers, start=1):
         col_letter = get_column_letter(col_idx)
         max_len = len(header)
-        for row_idx in range(2, ws.max_row + 1):
-            val = ws.cell(row=row_idx, column=col_idx).value
+        for row_idx in range(2, ws_mat.max_row + 1):
+            val = ws_mat.cell(row=row_idx, column=col_idx).value
             if val:
                 max_len = max(max_len, len(str(val)))
-        ws.column_dimensions[col_letter].width = min(max_len + 4, 50)
+        ws_mat.column_dimensions[col_letter].width = min(max_len + 4, 50)
 
-    ws.freeze_panes = 'A2'
-    ws.row_dimensions[1].height = 20
+    ws_mat.freeze_panes = 'A2'
+    ws_mat.row_dimensions[1].height = 20
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -462,6 +570,88 @@ def rfq_export(request):
     response['Content-Disposition'] = 'attachment; filename="RFQ_Tracker_Export.xlsx"'
     wb.save(response)
     return response
+
+
+def _parse_info_sheet(ws):
+    """
+    Parse the Info sheet from a ZEISS Supplier Template workbook.
+    Returns (supplier_code, company_name, contacts_list) or raises ValueError.
+    """
+    def _n(val):
+        if val is None:
+            return ''
+        t = str(val)
+        for ch in '▼▾▽▶↓▴':
+            t = t.replace(ch, '')
+        return ' '.join(t.split()).strip()
+
+    supplier_code = ''
+    company_name = ''
+    contact_header_row = None
+    col_map = {}
+    all_rows = list(ws.iter_rows(values_only=True))
+
+    for row_idx, row_vals in enumerate(all_rows, start=1):
+        for col_idx, raw in enumerate(row_vals):
+            nval = _n(raw)
+            nl = nval.lower()
+
+            if nl in ('supplier code', 'supplier code:') and not supplier_code:
+                for v2 in row_vals[col_idx + 1:]:
+                    nv2 = _n(v2)
+                    if nv2:
+                        supplier_code = nv2
+                        break
+
+            if 'supplier company name' in nl and not company_name:
+                for v2 in row_vals[col_idx + 1:]:
+                    nv2 = _n(v2)
+                    if nv2:
+                        company_name = nv2
+                        break
+
+            if nl == 'contact type' and contact_header_row is None:
+                contact_header_row = row_idx
+                for ci, hraw in enumerate(row_vals):
+                    hv = _n(hraw).lower()
+                    if hv == 'contact type':
+                        col_map['contact_type'] = ci
+                    elif hv == 'name':
+                        col_map['name'] = ci
+                    elif hv == 'email':
+                        col_map['email'] = ci
+                    elif hv == 'phone':
+                        col_map['phone'] = ci
+                    elif 'role' in hv or 'title' in hv:
+                        col_map['role_title'] = ci
+
+    contacts = []
+    VALID_TYPES = {ct for ct, _ in SupplierContact.CONTACT_TYPE_CHOICES}
+    ct_col = col_map.get('contact_type')
+    if contact_header_row is not None and ct_col is not None:
+        for row_vals in all_rows[contact_header_row:]:
+            ct_val = _n(row_vals[ct_col]) if ct_col < len(row_vals) else ''
+            if not ct_val or ct_val.isdigit():
+                continue
+            matched_type = ct_val
+            for vt in VALID_TYPES:
+                if ct_val.lower() in vt.lower() or vt.lower() in ct_val.lower():
+                    matched_type = vt
+                    break
+
+            def _gv(key):
+                ci = col_map.get(key)
+                return _n(row_vals[ci]) if ci is not None and ci < len(row_vals) else ''
+
+            contacts.append({
+                'contact_type': matched_type,
+                'name':         _gv('name'),
+                'email':        _gv('email'),
+                'phone':        _gv('phone'),
+                'role_title':   _gv('role_title'),
+            })
+
+    return supplier_code, company_name, contacts
 
 
 @login_required
@@ -475,29 +665,64 @@ def rfq_bulk_upload(request):
         return redirect('rfq_list')
 
     total_added = 0
+    sup_created = 0
+    sup_updated = 0
     errors = []
 
     for f in files:
         try:
             wb = openpyxl.load_workbook(f, data_only=True)
-            ws = wb.active
+
+            # ── Sheet 1 (Info): parse supplier info if present ────────────
+            if 'Info' in wb.sheetnames:
+                ws_info = wb['Info']
+                try:
+                    supplier_code, company_name, contacts = _parse_info_sheet(ws_info)
+                    if supplier_code:
+                        supplier, was_created = Supplier.objects.get_or_create(
+                            supplier_code=supplier_code,
+                            defaults={'supplier_company_name': company_name},
+                        )
+                        if not was_created:
+                            supplier.supplier_company_name = company_name
+                            supplier.save()
+                            sup_updated += 1
+                        else:
+                            sup_created += 1
+
+                        supplier.contacts.all().delete()
+                        for c in contacts:
+                            if not any([c['name'], c['email'], c['phone'], c['role_title']]):
+                                continue
+                            SupplierContact.objects.create(
+                                supplier=supplier,
+                                contact_type=c['contact_type'],
+                                name=c['name'],
+                                email=c['email'],
+                                phone=c['phone'],
+                                role_title=c['role_title'],
+                            )
+                except Exception as e:
+                    errors.append(f"{f.name} (Info sheet): {e}")
+
+            # ── Sheet 2 (Materials): parse RFQ entries ────────────────────
+            if 'Materials' in wb.sheetnames:
+                ws = wb['Materials']
+            else:
+                ws = wb.active
 
             # ── Build header → column-index map ──────────────────────
-            # Handles: embedded newlines in cells, two-row merged headers,
-            # and known typos / truncations via HEADER_ALIASES.
             headers = {}
             row1_cells = list(ws[1])
             row2_cells = list(ws[2]) if ws.max_row >= 2 else []
-            data_start_row = 2          # default: data begins right after row 1
-            uses_row2_header = False     # flipped if any column needs row-2 text
+            data_start_row = 2
+            uses_row2_header = False
 
             for ci, cell in enumerate(row1_cells):
-                # Normalise: replaces \n, dropdown arrows, excess whitespace
                 r1 = _normalize_header(cell.value)
                 field = _resolve_header(r1)
 
                 if not field and ci < len(row2_cells) and row2_cells[ci].value:
-                    # Try combining row-1 + row-2 (e.g. "Lead Time" + "(days)")
                     r2 = _normalize_header(row2_cells[ci].value)
                     combined = f"{r1} {r2}".strip()
                     field = _resolve_header(combined)
@@ -505,22 +730,20 @@ def rfq_bulk_upload(request):
                         uses_row2_header = True
 
                 if field:
-                    # Handle duplicate headers (e.g. two "UOM" columns)
                     if field in headers:
                         field = DUPLICATE_FIELD_MAP.get(field)
                     if field and field not in headers:
-                        headers[field] = ci + 1       # store 1-based index
+                        headers[field] = ci + 1
 
             if uses_row2_header:
                 data_start_row = 3
 
             if 'supplier_code' not in headers and 'supplier_name' not in headers:
-                errors.append(f"{f.name}: could not find recognisable column headers.")
+                errors.append(f"{f.name}: could not find recognisable column headers in Materials sheet.")
                 continue
 
             added = 0
             for row in ws.iter_rows(min_row=data_start_row, values_only=True):
-                # Skip completely empty rows
                 if all(v is None or str(v).strip() == '' for v in row):
                     continue
 
@@ -529,7 +752,6 @@ def rfq_bulk_upload(request):
                     raw = row[col_idx - 1] if col_idx - 1 < len(row) else None
                     kwargs[field] = _coerce(field, raw)
 
-                # supplier_code and part_no are required
                 if not kwargs.get('supplier_code') and not kwargs.get('supplier_name'):
                     continue
 
@@ -541,8 +763,15 @@ def rfq_bulk_upload(request):
         except Exception as e:
             errors.append(f"{f.name}: {e}")
 
+    parts = []
     if total_added:
-        messages.success(request, f'Bulk upload complete — {total_added} row(s) added.')
+        parts.append(f'{total_added} RFQ row(s) added')
+    if sup_created:
+        parts.append(f'{sup_created} supplier(s) created')
+    if sup_updated:
+        parts.append(f'{sup_updated} supplier(s) updated')
+    if parts:
+        messages.success(request, f'Upload complete — {", ".join(parts)}.')
     if errors:
         for err in errors:
             messages.error(request, err)
@@ -595,3 +824,169 @@ def rfq_edit_json(request, pk):
         errors = {k: [str(e) for e in v] for k, v in form.errors.items()}
         return JsonResponse({'ok': False, 'errors': errors}, status=400)
     return JsonResponse({'ok': True, 'entry': _entry_to_dict(entry)})
+
+
+# ── Supplier Info Views ────────────────────────────────────────────────────────
+
+def _supplier_to_dict(supplier):
+    contacts = list(supplier.contacts.values(
+        'id', 'contact_type', 'name', 'email', 'phone', 'role_title'
+    ))
+    return {
+        'pk': supplier.pk,
+        'supplier_code': supplier.supplier_code,
+        'supplier_company_name': supplier.supplier_company_name,
+        'contact_count': len(contacts),
+        'contacts': contacts,
+    }
+
+
+@login_required
+def supplier_list(request):
+    total = Supplier.objects.count()
+    return render(request, 'tracker/supplier_list.html', {'total': total})
+
+
+@login_required
+def supplier_data(request):
+    from django.db.models import Q
+    pk = request.GET.get('pk')
+    if pk:
+        try:
+            s = Supplier.objects.get(pk=int(pk))
+            return JsonResponse({'suppliers': [_supplier_to_dict(s)], 'total': 1})
+        except (Supplier.DoesNotExist, ValueError):
+            return JsonResponse({'suppliers': [], 'total': 0})
+    q = request.GET.get('q', '').strip()
+    qs = Supplier.objects.all()
+    if q:
+        qs = qs.filter(
+            Q(supplier_code__icontains=q) | Q(supplier_company_name__icontains=q)
+        )
+    suppliers = [_supplier_to_dict(s) for s in qs]
+    return JsonResponse({'suppliers': suppliers, 'total': len(suppliers)})
+
+
+@login_required
+def supplier_save(request):
+    """Create or update a supplier + its contacts via AJAX JSON POST."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
+
+    pk = data.get('pk')
+    supplier_code = (data.get('supplier_code') or '').strip()
+    supplier_company_name = (data.get('supplier_company_name') or '').strip()
+    contacts_data = data.get('contacts', [])
+
+    if not supplier_code:
+        return JsonResponse({'ok': False, 'error': 'Supplier Code is required.'}, status=400)
+
+    if pk:
+        supplier = get_object_or_404(Supplier, pk=pk)
+        # Check uniqueness if code changed
+        if Supplier.objects.filter(supplier_code=supplier_code).exclude(pk=pk).exists():
+            return JsonResponse({'ok': False, 'error': f'Supplier Code "{supplier_code}" already exists.'}, status=400)
+        supplier.supplier_code = supplier_code
+        supplier.supplier_company_name = supplier_company_name
+        supplier.save()
+        supplier.contacts.all().delete()
+    else:
+        if Supplier.objects.filter(supplier_code=supplier_code).exists():
+            return JsonResponse({'ok': False, 'error': f'Supplier Code "{supplier_code}" already exists.'}, status=400)
+        supplier = Supplier.objects.create(
+            supplier_code=supplier_code,
+            supplier_company_name=supplier_company_name,
+        )
+
+    VALID_TYPES = {ct for ct, _ in SupplierContact.CONTACT_TYPE_CHOICES}
+    for c in contacts_data:
+        ct = (c.get('contact_type') or '').strip()
+        name = (c.get('name') or '').strip()
+        email = (c.get('email') or '').strip()
+        phone = (c.get('phone') or '').strip()
+        role_title = (c.get('role_title') or '').strip()
+        if not ct or ct not in VALID_TYPES:
+            continue
+        if not any([name, email, phone, role_title]):
+            continue
+        SupplierContact.objects.create(
+            supplier=supplier,
+            contact_type=ct,
+            name=name,
+            email=email,
+            phone=phone,
+            role_title=role_title,
+        )
+
+    return JsonResponse({'ok': True, 'supplier': _supplier_to_dict(supplier)})
+
+
+@login_required
+def supplier_delete(request, pk):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    supplier = get_object_or_404(Supplier, pk=pk)
+    supplier.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required
+def supplier_template_upload(request):
+    """Parse Info sheet(s) from uploaded ZEISS Supplier Template files."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+
+    files = request.FILES.getlist('excel_files')
+    if not files:
+        return JsonResponse({'ok': False, 'error': 'No files provided.'})
+
+    created, updated, errors = 0, 0, []
+
+    for f in files:
+        try:
+            wb = openpyxl.load_workbook(f, data_only=True)
+            ws = wb['Info'] if 'Info' in wb.sheetnames else wb.worksheets[0]
+
+            supplier_code, company_name, contacts = _parse_info_sheet(ws)
+
+            if not supplier_code:
+                errors.append(f"{f.name}: Could not find 'Supplier Code' in the Info sheet.")
+                continue
+
+            supplier, was_created = Supplier.objects.get_or_create(
+                supplier_code=supplier_code,
+                defaults={'supplier_company_name': company_name},
+            )
+            if not was_created:
+                supplier.supplier_company_name = company_name
+                supplier.save()
+                updated += 1
+            else:
+                created += 1
+
+            supplier.contacts.all().delete()
+            for c in contacts:
+                if not any([c['name'], c['email'], c['phone'], c['role_title']]):
+                    continue
+                SupplierContact.objects.create(
+                    supplier=supplier,
+                    contact_type=c['contact_type'],
+                    name=c['name'],
+                    email=c['email'],
+                    phone=c['phone'],
+                    role_title=c['role_title'],
+                )
+
+        except Exception as e:
+            errors.append(f"{f.name}: {e}")
+
+    parts = []
+    if created: parts.append(f"{created} supplier(s) created")
+    if updated: parts.append(f"{updated} supplier(s) updated")
+    msg = ', '.join(parts) + '.' if parts else 'No suppliers imported.'
+
+    return JsonResponse({'ok': True, 'message': msg, 'errors': errors})

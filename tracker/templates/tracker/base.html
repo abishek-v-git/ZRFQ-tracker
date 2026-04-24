@@ -137,6 +137,30 @@
         {% endif %}
     </div>
 </nav>
+{% if user.is_authenticated %}
+<div style="background:#002855; border-bottom:1px solid #004080;">
+    <div class="container-fluid px-3">
+        <ul class="nav nav-tabs border-0" style="gap:2px;">
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'rfq_list' %}active fw-semibold{% else %}text-white-50{% endif %}"
+                   href="{% url 'rfq_list' %}"
+                   style="font-size:13px; padding:8px 16px; border-radius:4px 4px 0 0;
+                          {% if request.resolver_match.url_name == 'rfq_list' %}background:#f4f6fa; color:#003366 !important;{% endif %}">
+                    <i class="bi bi-clipboard-data me-1"></i>RFQ Tracker
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'supplier_list' %}active fw-semibold{% else %}text-white-50{% endif %}"
+                   href="{% url 'supplier_list' %}"
+                   style="font-size:13px; padding:8px 16px; border-radius:4px 4px 0 0;
+                          {% if request.resolver_match.url_name == 'supplier_list' %}background:#f4f6fa; color:#003366 !important;{% endif %}">
+                    <i class="bi bi-building me-1"></i>Supplier Info
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endif %}
 
 <div class="container-fluid px-3 py-3">
     {% if messages %}

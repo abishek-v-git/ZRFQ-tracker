@@ -6,7 +6,7 @@ SECRET_KEY = 'django-insecure-rfq-tracker-zeiss-2026-change-in-production'
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['zrfqtracker.inesssolutions.net','44.250.217.79']
+ALLOWED_HOSTS = ['zrfqtracker.inesssolutions.net','44.250.217.79','127.0.0.1']
 
 INSTALLED_APPS = [
     'django.contrib.admin',

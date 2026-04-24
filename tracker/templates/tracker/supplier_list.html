@@ -1,0 +1,515 @@
+{% extends 'tracker/base.html' %}
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <h5 class="mb-0 fw-bold" style="color:#003366;">
+            <i class="bi bi-building me-2"></i>Supplier Info &amp; Contacts
+        </h5>
+        <span class="badge rounded-pill" style="background:#003366;" id="supplierCount">{{ total }}</span>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <input type="text" id="supplierSearch" class="form-control form-control-sm" placeholder="Search suppliers…" style="width:220px;">
+        <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('templateUpload').click()" title="Upload ZEISS Supplier Info sheet (Sheet 1 only)">
+            <i class="bi bi-upload me-1"></i>Upload Info Sheet
+        </button>
+        <input type="file" id="templateUpload" accept=".xlsx,.xls" style="display:none;" multiple onchange="uploadTemplates(this)">
+        <button class="btn btn-sm btn-primary" onclick="openAddModal()">
+            <i class="bi bi-plus-lg me-1"></i>Add Supplier
+        </button>
+    </div>
+</div>
+
+<div id="uploadMsg"></div>
+
+<div class="table-wrapper">
+    <table class="table table-bordered mb-0" id="supplierTable" style="background:#fff; font-size:13px; min-width:700px;">
+        <thead>
+            <tr style="background:#003366; color:#fff;">
+                <th style="width:36px;"></th>
+                <th style="width:36px;">#</th>
+                <th>Supplier Code</th>
+                <th>Company Name</th>
+                <th style="width:120px; text-align:center;">Contacts</th>
+                <th style="width:80px; text-align:center;">Delete</th>
+            </tr>
+        </thead>
+        <tbody id="supplierTableBody">
+            <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Supplier Modal (Section A only) -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:500px;">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#003366; color:#fff;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-lg me-2"></i>Add Supplier</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="addModalError" class="alert alert-danger d-none py-2"></div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label" style="font-weight:600; font-size:11px; color:#555;">Supplier Code <span class="text-danger">*</span></label>
+                        <input type="text" id="newSupplierCode" class="form-control form-control-sm" placeholder="e.g. 5564340">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" style="font-weight:600; font-size:11px; color:#555;">Supplier Company Name</label>
+                        <input type="text" id="newCompanyName" class="form-control form-control-sm" placeholder="Company legal name">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm" style="background:#003366; color:#fff;" onclick="addSupplier()">
+                    <i class="bi bi-check-lg me-1"></i>Add &amp; Edit Contacts Below
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title fw-bold text-danger"><i class="bi bi-trash me-2"></i>Delete Supplier</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1" style="font-size:13px;">Delete <strong id="deleteSupplierName"></strong> and all their contacts?</p>
+                <p class="text-muted mb-0" style="font-size:11px;">This cannot be undone.</p>
+            </div>
+            <div class="modal-footer py-2">
+                <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-sm btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-wrapper { overflow-x:auto; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+
+/* Expanded contact editor row */
+.contact-expand-row > td {
+    padding: 0 !important;
+    border-top: none !important;
+}
+.contact-expand-inner {
+    background: #f0f4ff;
+    border-top: 2px solid #003366;
+    padding: 14px 16px 14px 16px;
+}
+
+/* Section headings inside expanded row */
+.expand-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #003366;
+    border-bottom: 2px solid #003366;
+    padding-bottom: 3px;
+    margin-bottom: 10px;
+}
+
+/* Contact edit table */
+.contact-edit-table { font-size: 12px; width: 100%; border-collapse: collapse; }
+.contact-edit-table th {
+    background: #003366; color: #fff; font-weight: 600;
+    padding: 6px 8px; border: 1px solid #002244; white-space: nowrap;
+}
+.contact-edit-table td { padding: 4px 5px; border: 1px solid #cdd5e8; vertical-align: middle; }
+.contact-edit-table tr:hover td { background: #e8eeff; }
+
+.btn-toggle {
+    background: none; border: 1px solid #cdd5e0; border-radius: 4px;
+    padding: 2px 7px; cursor: pointer; font-size: 12px; color: #555;
+    transition: all 0.15s;
+}
+.btn-toggle:hover { background: #e8eeff; border-color: #003366; color: #003366; }
+.btn-toggle.open { background: #003366; color: #fff; border-color: #003366; }
+
+.type-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+</style>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+const CONTACT_TYPES = [
+    'PO Confirmation',
+    'RFQ - Request for Quotation',
+    'Returns & Claims',
+    'Quality',
+    'Accounts Receivable',
+    'Escalation',
+];
+const TYPE_COLORS = {
+    'PO Confirmation':             '#0d6efd',
+    'RFQ - Request for Quotation': '#6610f2',
+    'Returns & Claims':            '#dc3545',
+    'Quality':                     '#198754',
+    'Accounts Receivable':         '#fd7e14',
+    'Escalation':                  '#d63384',
+};
+
+let addModal, deleteModal;
+let allSuppliers = [];
+let openPk = null;   // which supplier row is currently expanded
+
+document.addEventListener('DOMContentLoaded', () => {
+    addModal    = new bootstrap.Modal(document.getElementById('addModal'));
+    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    loadSuppliers();
+    document.getElementById('supplierSearch').addEventListener('input', () => {
+        const q = document.getElementById('supplierSearch').value.trim().toLowerCase();
+        const filtered = q
+            ? allSuppliers.filter(s =>
+                s.supplier_code.toLowerCase().includes(q) ||
+                s.supplier_company_name.toLowerCase().includes(q))
+            : allSuppliers;
+        renderTable(filtered);
+    });
+});
+
+function loadSuppliers(expandPk) {
+    fetch('{% url "supplier_data" %}')
+        .then(r => r.json())
+        .then(data => {
+            allSuppliers = data.suppliers;
+            renderTable(allSuppliers, expandPk ?? openPk);
+        });
+}
+
+function renderTable(suppliers, expandPk) {
+    const tbody = document.getElementById('supplierTableBody');
+    document.getElementById('supplierCount').textContent = suppliers.length;
+
+    if (!suppliers.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No suppliers found.</td></tr>';
+        return;
+    }
+
+    const rows = [];
+    suppliers.forEach((s, i) => {
+        const filled = (s.contacts || []).filter(c => c.name || c.email || c.phone || c.role_title);
+        rows.push(`
+        <tr id="sup-row-${s.pk}" style="cursor:pointer;" onclick="toggleExpand(${s.pk})">
+            <td class="text-center align-middle" style="width:36px;">
+                <button class="btn-toggle ${openPk === s.pk ? 'open' : ''}" id="toggle-${s.pk}" onclick="event.stopPropagation(); toggleExpand(${s.pk})">
+                    <i class="bi ${openPk === s.pk ? 'bi-chevron-down' : 'bi-chevron-right'}" id="chev-${s.pk}"></i>
+                </button>
+            </td>
+            <td class="text-muted" style="width:36px;">${i + 1}</td>
+            <td><strong>${esc(s.supplier_code)}</strong></td>
+            <td>${esc(s.supplier_company_name)}</td>
+            <td class="text-center">
+                ${filled.length
+                    ? `<span class="badge" style="background:#003366;">${filled.length} contact${filled.length > 1 ? 's' : ''}</span>`
+                    : `<span class="text-muted" style="font-size:11px;">—</span>`}
+            </td>
+            <td class="text-center" onclick="event.stopPropagation()">
+                <button class="btn btn-sm btn-outline-danger" style="padding:2px 7px; font-size:11px;" onclick="confirmDelete(${s.pk}, '${esc(s.supplier_code)}')" title="Delete">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+        <tr class="contact-expand-row ${openPk === s.pk ? '' : 'd-none'}" id="expand-${s.pk}">
+            <td colspan="6">
+                ${buildExpandHtml(s)}
+            </td>
+        </tr>`);
+    });
+
+    tbody.innerHTML = rows.join('');
+}
+
+function buildExpandHtml(s) {
+    const typeOpts = CONTACT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+    const contacts = s.contacts || [];
+
+    // Build one row per existing contact; fill remaining types with blank rows
+    const rows = [];
+    const seen = {};
+    contacts.forEach(c => {
+        seen[c.contact_type] = (seen[c.contact_type] || 0) + 1;
+        rows.push({ contact_type: c.contact_type, name: c.name, email: c.email, phone: c.phone, role_title: c.role_title });
+    });
+    // Fill any contact type not yet present with a blank row
+    CONTACT_TYPES.forEach(ct => {
+        if (!seen[ct]) rows.push({ contact_type: ct, name: '', email: '', phone: '', role_title: '' });
+    });
+
+    const contactRows = rows.map((c, i) => {
+        const selOpts = CONTACT_TYPES.map(t =>
+            `<option value="${t}" ${t === c.contact_type ? 'selected' : ''}>${t}</option>`
+        ).join('');
+        return `
+        <tr>
+            <td class="text-muted text-center contact-rownum">${i + 1}</td>
+            <td><select class="form-select form-select-sm contact-type py-0" style="font-size:12px;">${selOpts}</select></td>
+            <td><input class="form-control form-control-sm contact-name" value="${esc(c.name)}" placeholder="Name" style="font-size:12px;"></td>
+            <td><input class="form-control form-control-sm contact-email" value="${esc(c.email)}" placeholder="Email" style="font-size:12px;"></td>
+            <td><input class="form-control form-control-sm contact-phone" value="${esc(c.phone)}" placeholder="Phone" style="font-size:12px;"></td>
+            <td><input class="form-control form-control-sm contact-role" value="${esc(c.role_title)}" placeholder="Role / Title" style="font-size:12px;"></td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger" style="padding:1px 5px; font-size:11px;" onclick="removeContactRow(this)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <div class="contact-expand-inner">
+        <!-- Section A: Supplier General -->
+        <div class="expand-section-title mb-2">A &nbsp;·&nbsp; Supplier General</div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-3">
+                <label style="font-size:11px; font-weight:600; color:#555;">Supplier Code</label>
+                <input type="text" class="form-control form-control-sm sup-code-input" value="${esc(s.supplier_code)}" style="font-size:12px;">
+            </div>
+            <div class="col-md-6">
+                <label style="font-size:11px; font-weight:600; color:#555;">Company Name</label>
+                <input type="text" class="form-control form-control-sm sup-name-input" value="${esc(s.supplier_company_name)}" style="font-size:12px;">
+            </div>
+        </div>
+
+        <!-- Section B: Contacts -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="expand-section-title mb-0">B &nbsp;·&nbsp; Contact Information
+                <small class="text-muted fw-normal" style="font-size:10px; text-transform:none; letter-spacing:0;">
+                    &nbsp;·&nbsp; One row per person &nbsp;·&nbsp; Repeat Contact Type for multiple contacts
+                </small>
+            </div>
+            <button type="button" class="btn btn-sm ms-3" style="background:#003366; color:#fff; font-size:11px; white-space:nowrap;"
+                    onclick="addContactRowInline(this)">
+                <i class="bi bi-plus-lg me-1"></i>Add Row
+            </button>
+        </div>
+        <div class="table-responsive mb-3">
+            <table class="contact-edit-table">
+                <thead>
+                    <tr>
+                        <th style="width:28px;">#</th>
+                        <th style="width:205px;">Contact Type</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Role / Title</th>
+                        <th style="width:32px;"></th>
+                    </tr>
+                </thead>
+                <tbody class="contact-rows-body">
+                    ${contactRows}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm" style="background:#003366; color:#fff;" onclick="saveInline(this, ${s.pk})">
+                <i class="bi bi-check-lg me-1"></i>Save
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleExpand(${s.pk})">
+                Cancel
+            </button>
+            <span class="save-msg ms-2" style="font-size:12px;"></span>
+        </div>
+    </div>`;
+}
+
+function toggleExpand(pk) {
+    if (openPk === pk) {
+        // Close
+        openPk = null;
+        const row = document.getElementById(`expand-${pk}`);
+        const btn = document.getElementById(`toggle-${pk}`);
+        const chev = document.getElementById(`chev-${pk}`);
+        if (row) row.classList.add('d-none');
+        if (btn) { btn.classList.remove('open'); }
+        if (chev) { chev.className = 'bi bi-chevron-right'; }
+    } else {
+        // Close any previously open row
+        if (openPk !== null) {
+            const oldRow = document.getElementById(`expand-${openPk}`);
+            const oldBtn = document.getElementById(`toggle-${openPk}`);
+            const oldChev = document.getElementById(`chev-${openPk}`);
+            if (oldRow) oldRow.classList.add('d-none');
+            if (oldBtn) oldBtn.classList.remove('open');
+            if (oldChev) oldChev.className = 'bi bi-chevron-right';
+        }
+        openPk = pk;
+        const row = document.getElementById(`expand-${pk}`);
+        const btn = document.getElementById(`toggle-${pk}`);
+        const chev = document.getElementById(`chev-${pk}`);
+        if (row) row.classList.remove('d-none');
+        if (btn) btn.classList.add('open');
+        if (chev) chev.className = 'bi bi-chevron-down';
+    }
+}
+
+function addContactRowInline(btn) {
+    const tbody = btn.closest('.contact-expand-inner').querySelector('.contact-rows-body');
+    const idx = tbody.rows.length + 1;
+    const typeOpts = CONTACT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td class="text-muted text-center contact-rownum">${idx}</td>
+        <td><select class="form-select form-select-sm contact-type py-0" style="font-size:12px;">${typeOpts}</select></td>
+        <td><input class="form-control form-control-sm contact-name" placeholder="Name" style="font-size:12px;"></td>
+        <td><input class="form-control form-control-sm contact-email" placeholder="Email" style="font-size:12px;"></td>
+        <td><input class="form-control form-control-sm contact-phone" placeholder="Phone" style="font-size:12px;"></td>
+        <td><input class="form-control form-control-sm contact-role" placeholder="Role / Title" style="font-size:12px;"></td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-outline-danger" style="padding:1px 5px; font-size:11px;" onclick="removeContactRow(this)">
+                <i class="bi bi-x"></i>
+            </button>
+        </td>`;
+    tbody.appendChild(tr);
+    renumberContactRows(tbody);
+}
+
+function removeContactRow(btn) {
+    const tbody = btn.closest('tbody');
+    btn.closest('tr').remove();
+    renumberContactRows(tbody);
+}
+
+function renumberContactRows(tbody) {
+    tbody.querySelectorAll('.contact-rownum').forEach((el, i) => el.textContent = i + 1);
+}
+
+function saveInline(btn, pk) {
+    const inner = btn.closest('.contact-expand-inner');
+    const msgEl = inner.querySelector('.save-msg');
+
+    const supplierCode   = inner.querySelector('.sup-code-input').value.trim();
+    const companyName    = inner.querySelector('.sup-name-input').value.trim();
+
+    if (!supplierCode) {
+        msgEl.textContent = 'Supplier Code is required.';
+        msgEl.style.color = '#dc3545';
+        return;
+    }
+
+    const contacts = [];
+    inner.querySelectorAll('.contact-rows-body tr').forEach(row => {
+        contacts.push({
+            contact_type: row.querySelector('.contact-type').value,
+            name:         row.querySelector('.contact-name').value.trim(),
+            email:        row.querySelector('.contact-email').value.trim(),
+            phone:        row.querySelector('.contact-phone').value.trim(),
+            role_title:   row.querySelector('.contact-role').value.trim(),
+        });
+    });
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Saving…';
+
+    fetch('{% url "supplier_save" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ pk, supplier_code: supplierCode, supplier_company_name: companyName, contacts }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save';
+        if (data.ok) {
+            msgEl.textContent = 'Saved ✓';
+            msgEl.style.color = '#198754';
+            setTimeout(() => { msgEl.textContent = ''; }, 2000);
+            loadSuppliers(pk);   // reload and keep this row open
+        } else {
+            msgEl.textContent = data.error || 'Error saving.';
+            msgEl.style.color = '#dc3545';
+        }
+    });
+}
+
+// ── Add Supplier modal ─────────────────────────────────────────────────────────
+function openAddModal() {
+    document.getElementById('newSupplierCode').value = '';
+    document.getElementById('newCompanyName').value = '';
+    document.getElementById('addModalError').classList.add('d-none');
+    addModal.show();
+}
+
+function addSupplier() {
+    const code = document.getElementById('newSupplierCode').value.trim();
+    const name = document.getElementById('newCompanyName').value.trim();
+    const errEl = document.getElementById('addModalError');
+    if (!code) { errEl.textContent = 'Supplier Code is required.'; errEl.classList.remove('d-none'); return; }
+
+    fetch('{% url "supplier_save" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ supplier_code: code, supplier_company_name: name, contacts: [] }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            addModal.hide();
+            openPk = data.supplier.pk;   // auto-expand the new supplier
+            loadSuppliers(data.supplier.pk);
+        } else {
+            errEl.textContent = data.error || 'Error.';
+            errEl.classList.remove('d-none');
+        }
+    });
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+function confirmDelete(pk, code) {
+    document.getElementById('deleteSupplierName').textContent = code;
+    document.getElementById('confirmDeleteBtn').onclick = () => doDelete(pk);
+    deleteModal.show();
+}
+
+function doDelete(pk) {
+    fetch(`/suppliers/delete/${pk}/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF },
+    })
+    .then(() => { deleteModal.hide(); if (openPk === pk) openPk = null; loadSuppliers(); })
+    .catch(() => { deleteModal.hide(); loadSuppliers(); });
+}
+
+function uploadTemplates(input) {
+    const files = input.files;
+    if (!files.length) return;
+    const msgEl = document.getElementById('uploadMsg');
+    msgEl.innerHTML = '<div class="alert alert-info py-2"><i class="bi bi-hourglass-split me-2"></i>Uploading Info sheet…</div>';
+    const formData = new FormData();
+    for (const f of files) formData.append('excel_files', f);
+    fetch('{% url "supplier_template_upload" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF },
+        body: formData,
+    })
+    .then(r => r.json())
+    .then(data => {
+        const errs = (data.errors || []).map(e => `<li>${esc(e)}</li>`).join('');
+        msgEl.innerHTML = `<div class="alert alert-${data.ok && !errs ? 'success' : 'warning'} alert-dismissible fade show py-2">
+            <i class="bi bi-${data.ok && !errs ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            ${esc(data.message || data.error || '')}
+            ${errs ? `<ul class="mb-0 mt-1">${errs}</ul>` : ''}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>`;
+        input.value = '';
+        loadSuppliers();
+    });
+}
+
+function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}
