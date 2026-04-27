@@ -120,6 +120,7 @@
     /* Stacking fix for sticky columns */
     .status-cell:focus-within { z-index: 2000 !important; }
     .comments-cell:focus-within { z-index: 2000 !important; }
+    .rfq-sent-cell:focus-within { z-index: 2000 !important; }
 
     /* Checkbox column */
     .col-check { width: 36px; min-width: 36px; text-align: center; }
@@ -338,8 +339,9 @@
                     <th class="sortable" data-col="42">USMCA Certificate (CA/MX Only)</th>
                     <th class="sortable" data-col="43">USMCA Start Date</th>
                     <th class="sortable" data-col="44">USMCA Expiry Date</th>
-                    <th class="sortable" data-col="45">Status</th>
-                    <th class="sortable" data-col="46">Comments</th>
+                    <th class="sortable" data-col="45">RFQ Sent</th>
+                    <th class="sortable" data-col="46">Status</th>
+                    <th class="sortable" data-col="47">Comments</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -453,6 +455,7 @@
                         <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ form.usmca_expiry_date }}</div>
 
                         <div class="col-12 mt-1"><div class="section-heading">Workflow</div></div>
+                        <div class="col-md-2"><label class="form-label">RFQ Sent</label>{{ form.rfq_sent }}</div>
                         <div class="col-md-3"><label class="form-label">Status</label>{{ form.status }}</div>
                         <div class="col-md-7"><label class="form-label">Comments</label>{{ form.comments }}</div>
                     </div>
@@ -633,7 +636,8 @@
                         <div class="col-md-2"><label class="form-label">USMCA Expiry Date</label>{{ edit_form.usmca_expiry_date }}</div>
 
                         <div class="col-12 mt-1"><div class="section-heading">Workflow</div></div>
-                        <div class="col-md-4"><label class="form-label">Status</label>{{ edit_form.status }}</div>
+                        <div class="col-md-2"><label class="form-label">RFQ Sent</label>{{ edit_form.rfq_sent }}</div>
+                        <div class="col-md-3"><label class="form-label">Status</label>{{ edit_form.status }}</div>
                         <div class="col-md-6"><label class="form-label">Comments</label>{{ edit_form.comments }}</div>
                     </div>
                     <div id="editFormErrors" class="alert alert-danger mt-2 py-2 d-none"></div>
@@ -823,6 +827,8 @@ function submitBulkUpload() {
 
         const parts = [];
         if (data.added) parts.push(`${data.added} row(s) added`);
+        if (data.sup_created) parts.push(`${data.sup_created} supplier(s) created`);
+        if (data.sup_updated) parts.push(`${data.sup_updated} supplier(s) updated`);
         if (data.identical_skipped) parts.push(`${data.identical_skipped} unchanged duplicate${data.identical_skipped > 1 ? 's' : ''} skipped`);
         if (data.errors && data.errors.length) {
             msgEl.innerHTML = `<div class="alert alert-warning py-1 mb-0" style="font-size:12px;">
@@ -878,6 +884,7 @@ const PRIMARY_FIELDS = [
     ['lead_time_days',          'Lead Time (days)'],
     ['ship_lead_time_days',     'Ship Lead Time (days)'],
     ['coo',                     'COO'],
+    ['rfq_sent',                'RFQ Sent'],
     ['status',                  'Status'],
     ['comments',                'Comments'],
 ];
@@ -1581,6 +1588,7 @@ document.getElementById('bulkApplyBtn').addEventListener('click', function() {
             <td>${yesno('usmca_certificate',e.pk,e.usmca_certificate)}</td>
             <td>${fmtDate(e.usmca_start_date)}</td>
             <td>${fmtDate(e.usmca_expiry_date)}</td>
+            <td class="rfq-sent-cell">${yesno('rfq_sent',e.pk,e.rfq_sent)}</td>
             <td class="status-cell" style="min-width:150px;">${statusCell}</td>
             <td class="comments-cell" style="min-width:200px;">${commentsCell}</td>
             <td class="text-nowrap">

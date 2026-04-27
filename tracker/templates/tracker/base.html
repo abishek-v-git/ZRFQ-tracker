@@ -70,12 +70,20 @@
             border-left: 1px solid #dee2e6;
         }
 
+        table.rfq-table th:nth-last-child(4),
+        table.rfq-table td:nth-last-child(4) {
+            width: 90px; min-width: 90px; right: 420px; z-index: 3;
+            border-left: 1px solid #dee2e6;
+        }
+
         table.rfq-table th:last-child,
         table.rfq-table td:last-child,
         table.rfq-table th:nth-last-child(2),
         table.rfq-table td:nth-last-child(2),
         table.rfq-table th:nth-last-child(3),
-        table.rfq-table td:nth-last-child(3) {
+        table.rfq-table td:nth-last-child(3),
+        table.rfq-table th:nth-last-child(4),
+        table.rfq-table td:nth-last-child(4) {
             position: sticky;
             box-shadow: -2px 0 5px rgba(0,0,0,0.03);
         }
@@ -83,7 +91,8 @@
         /* Header z-index and backgrounds */
         table.rfq-table th:last-child,
         table.rfq-table th:nth-last-child(2),
-        table.rfq-table th:nth-last-child(3) {
+        table.rfq-table th:nth-last-child(3),
+        table.rfq-table th:nth-last-child(4) {
             z-index: 10;
             background: #003366 !important;
         }
@@ -91,14 +100,16 @@
         /* Cell backgrounds */
         table.rfq-table td:last-child,
         table.rfq-table td:nth-last-child(2),
-        table.rfq-table td:nth-last-child(3) {
+        table.rfq-table td:nth-last-child(3),
+        table.rfq-table td:nth-last-child(4) {
             background: #fff;
         }
 
         /* Hover states */
         table.rfq-table tbody tr:hover td:last-child,
         table.rfq-table tbody tr:hover td:nth-last-child(2),
-        table.rfq-table tbody tr:hover td:nth-last-child(3) {
+        table.rfq-table tbody tr:hover td:nth-last-child(3),
+        table.rfq-table tbody tr:hover td:nth-last-child(4) {
             background: #eef3fb;
         }
 
