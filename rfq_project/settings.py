@@ -51,7 +51,7 @@ WSGI_APPLICATION = 'rfq_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'zrfq',      
+        'NAME': 'zrfqapril27_up',      
         'USER': 'iness',
         'PASSWORD': 'Iness*123',
         'HOST': 'postgres.coussk3bjb0m.us-west-2.rds.amazonaws.com',             
