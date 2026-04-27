@@ -199,37 +199,37 @@
 <div class="dashboard-cards mb-3">
     <div class="dash-card">
         <div class="dash-bar" style="background:#003366;"></div>
-        <div class="dash-num" style="color:#003366;">{{ stats.total_suppliers }}</div>
+        <div class="dash-num" id="stat-total-suppliers" style="color:#003366;">{{ stats.total_suppliers }}</div>
         <div class="dash-label">Total Suppliers</div>
     </div>
     <div class="dash-card">
         <div class="dash-bar" style="background:#003366;"></div>
-        <div class="dash-num" style="color:#003366;">{{ stats.sent }}</div>
+        <div class="dash-num" id="stat-sent" style="color:#003366;">{{ stats.sent }}</div>
         <div class="dash-label">Requests Sent</div>
     </div>
     <div class="dash-card">
         <div class="dash-bar" style="background:#b94a00;"></div>
-        <div class="dash-num" style="color:#b94a00;">{{ stats.not_sent }}</div>
+        <div class="dash-num" id="stat-not-sent" style="color:#b94a00;">{{ stats.not_sent }}</div>
         <div class="dash-label">Requests Not Sent</div>
     </div>
     <div class="dash-card">
         <div class="dash-bar" style="background:#e6a800;"></div>
-        <div class="dash-num" style="color:#e6a800;">{{ stats.partial }}</div>
+        <div class="dash-num" id="stat-partial" style="color:#e6a800;">{{ stats.partial }}</div>
         <div class="dash-label">Partial Response Received</div>
     </div>
     <div class="dash-card">
         <div class="dash-bar" style="background:#1a7a3c;"></div>
-        <div class="dash-num" style="color:#1a7a3c;">{{ stats.completed }}</div>
+        <div class="dash-num" id="stat-completed" style="color:#1a7a3c;">{{ stats.completed }}</div>
         <div class="dash-label">Response Received</div>
     </div>
     <div class="dash-card">
         <div class="dash-bar" style="background:#c47900;"></div>
-        <div class="dash-num" style="color:#c47900;">{{ stats.not_valid }}</div>
+        <div class="dash-num" id="stat-not-valid" style="color:#c47900;">{{ stats.not_valid }}</div>
         <div class="dash-label">Response (Not Valid)</div>
     </div>
     <div class="dash-card">
         <div class="dash-bar" style="background:#6c757d;"></div>
-        <div class="dash-num" style="color:#6c757d;">{{ stats.no_resp }}</div>
+        <div class="dash-num" id="stat-no-resp" style="color:#6c757d;">{{ stats.no_resp }}</div>
         <div class="dash-label">No Response</div>
     </div>
 </div>
@@ -836,6 +836,7 @@ function submitBulkUpload() {
         } else {
             if (parts.length) showToast(`Upload complete — ${parts.join(', ')}.`, true);
             fetchData();
+            updateDashboard();
         }
     })
     .catch(() => {
@@ -1044,6 +1045,7 @@ function applyDuplicateChoices() {
         if (kept) parts.push(`${kept} duplicate(s) kept`);
         showToast(parts.join(' · '), true);
         fetchData();
+        updateDashboard();
     });
 }
 
@@ -1096,6 +1098,7 @@ function runDedupe() {
         confirmBtn.innerHTML = '<i class="bi bi-subtract me-1"></i>Remove Duplicates';
         showToast(`Removed ${data.removed} duplicate row${data.removed !== 1 ? 's' : ''}.`, true);
         fetchData();
+        updateDashboard();
     });
 }
 
@@ -1115,6 +1118,21 @@ function getStatusClass(status) {
     return 'status-others';
 }
 
+function updateDashboard() {
+    fetch('/stats/')
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('stat-total-suppliers').textContent = d.total_suppliers;
+            document.getElementById('stat-sent').textContent = d.sent;
+            document.getElementById('stat-not-sent').textContent = d.not_sent;
+            document.getElementById('stat-partial').textContent = d.partial;
+            document.getElementById('stat-completed').textContent = d.completed;
+            document.getElementById('stat-not-valid').textContent = d.not_valid;
+            document.getElementById('stat-no-resp').textContent = d.no_resp;
+        })
+        .catch(() => {});
+}
+
 function patchField(pk, field, value, feedbackEl) {
     if (feedbackEl) feedbackEl.classList.add('is-saving');
     fetch('/patch/' + pk + '/', {
@@ -1128,6 +1146,7 @@ function patchField(pk, field, value, feedbackEl) {
         if (data.ok) {
             if (feedbackEl) { feedbackEl.classList.add('is-saved'); setTimeout(() => feedbackEl.classList.remove('is-saved'), 1500); }
             showToast('Saved', true);
+            if (field === 'status') updateDashboard();
         } else {
             showToast('Save failed', false);
         }
@@ -1765,8 +1784,9 @@ document.getElementById('bulkApplyBtn').addEventListener('click', function() {
         }, 300);
     });
 
-    window.reloadTable = function() { fetchData(); };
+    window.reloadTable = function() { fetchData(); updateDashboard(); };
     fetchData();
+    updateDashboard();
 })();
 </script>
 {% endblock %}

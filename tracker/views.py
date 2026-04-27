@@ -262,6 +262,20 @@ def rfq_list(request):
 
 
 @login_required
+def rfq_stats(request):
+    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
+    return JsonResponse({
+        'total_suppliers': RFQEntry.objects.values('supplier_code').distinct().count(),
+        'sent':      RFQEntry.objects.exclude(status='').count(),
+        'not_sent':  RFQEntry.objects.filter(status='').count(),
+        'partial':   RFQEntry.objects.filter(status='Partially Data Received').count(),
+        'completed': RFQEntry.objects.filter(status='Completed').count(),
+        'no_resp':   RFQEntry.objects.filter(status='No Response Yet').count(),
+        'not_valid': RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count(),
+    })
+
+
+@login_required
 def rfq_data(request):
     from django.db.models import Q
     from django.core.paginator import Paginator
