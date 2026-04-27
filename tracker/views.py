@@ -58,6 +58,7 @@ BULK_COLUMN_MAP = {
     'USMCA Certificate (CA/MX Only)':   'usmca_certificate',
     'USMCA Start Date':                 'usmca_start_date',
     'USMCA Expiry Date':                'usmca_expiry_date',
+    'RFQ Sent':                         'rfq_sent',
     'Status':                           'status',
     'Comments':                         'comments',
 }
@@ -233,6 +234,7 @@ def _entry_to_dict(entry):
         'usmca_certificate': entry.usmca_certificate or '',
         'usmca_start_date': fd(entry.usmca_start_date),
         'usmca_expiry_date': fd(entry.usmca_expiry_date),
+        'rfq_sent': entry.rfq_sent or '',
         'status': entry.status or '',
         'comments': entry.comments or '',
     }
@@ -318,7 +320,7 @@ def rfq_data(request):
         37: 'alternative_part_no', 38: 'mfg_address_postal_cn',
         39: 'uflpa_compliance', 40: 'uflpa_start_date', 41: 'uflpa_expiry_date',
         42: 'usmca_certificate', 43: 'usmca_start_date', 44: 'usmca_expiry_date',
-        45: 'status', 46: 'comments',
+        45: 'rfq_sent', 46: 'status', 47: 'comments',
     }
 
     field = COL_FIELD.get(sort_col)
@@ -527,7 +529,7 @@ def rfq_export(request):
         'Mfg Address + Postal (CN Only)', 'UFLPA Compliance (CN Only)',
         'UFLPA Start Date', 'UFLPA Expiry Date',
         'USMCA Certificate (CA/MX Only)', 'USMCA Start Date', 'USMCA Expiry Date',
-        'Status', 'Comments',
+        'RFQ Sent', 'Status', 'Comments',
     ]
 
     for col_idx, header in enumerate(mat_headers, start=1):
@@ -582,6 +584,7 @@ def rfq_export(request):
             entry.usmca_certificate,
             entry.usmca_start_date,
             entry.usmca_expiry_date,
+            entry.rfq_sent,
             entry.status,
             entry.comments,
         ]
@@ -695,31 +698,34 @@ def _parse_info_sheet(ws):
 
 def _entries_identical(existing, incoming_kwargs):
     """Return True when every incoming field matches the existing DB row.
-    Status and comments are skipped — they are manually maintained.
+
+    Fields absent from incoming_kwargs entirely (column not in the file) are
+    skipped — this lets template uploads without every column avoid false
+    positives.  But if a column IS present in the file and blank while the DB
+    has a value, that is a real difference and will trigger the duplicate modal.
 
     Uses the same serialisation path as _entry_to_dict / _kwargs_to_display
     so that Decimal('6.00') and float 6.0 are treated as equal.
     """
-    SKIP = {'status', 'comments'}
-
     def _norm(field, s):
-        """Normalise a serialised string value for comparison."""
         s = (s or '').strip()
         if field in DECIMAL_FIELDS or field in INT_FIELDS:
             try:
-                return str(float(s))   # '6.00'→'6.0', '51.0500'→'51.05'
+                return str(float(s))
             except (ValueError, TypeError):
                 pass
         return s
 
-    existing_dict  = _entry_to_dict(existing)        # Decimal/date → string
-    incoming_strs  = _kwargs_to_display(incoming_kwargs)  # float/date → string
+    existing_dict  = _entry_to_dict(existing)
+    incoming_strs  = _kwargs_to_display(incoming_kwargs)
 
     for field, new_str in incoming_strs.items():
-        if field in SKIP:
-            continue
+        new_norm     = _norm(field, new_str)
         existing_str = existing_dict.get(field, '')
-        if _norm(field, existing_str) != _norm(field, new_str):
+        existing_norm = _norm(field, existing_str)
+        if not new_norm and not existing_norm:   # both blank — no difference
+            continue
+        if new_norm != existing_norm:
             return False
     return True
 
@@ -898,6 +904,8 @@ def rfq_bulk_upload(request):
         return JsonResponse({
             'ok': True,
             'added': total_added,
+            'sup_created': sup_created,
+            'sup_updated': sup_updated,
             'identical_skipped': identical_skipped,
             'duplicates': duplicates,
             'errors': errors,
@@ -934,7 +942,7 @@ def rfq_deduplicate(request):
         .filter(cnt__gt=1)
     )
 
-    SCORE_FIELDS = ['status', 'comments', 'contact_email', 'pic',
+    SCORE_FIELDS = ['status', 'comments', 'rfq_sent', 'contact_email', 'pic',
                     'unit_price', 'lead_time_days', 'coo']
 
     def _score(entry):
@@ -999,7 +1007,7 @@ def rfq_patch(request, pk):
     PATCHABLE = {
         'russian_steel_confirmation', 'hazmat', 'un_sds_msds',
         'product_regulation', 'eol_status', 'uflpa_compliance', 'usmca_certificate',
-        'status', 'comments',
+        'rfq_sent', 'status', 'comments',
     }
     if field not in PATCHABLE:
         return JsonResponse({'ok': False, 'error': 'Field not allowed'}, status=400)

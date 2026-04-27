@@ -107,6 +107,7 @@ class RFQEntry(models.Model):
     usmca_expiry_date = models.DateField(null=True, blank=True, verbose_name='USMCA Expiry Date')
 
     # ── Workflow ──────────────────────────────────────────────────────────────
+    rfq_sent = models.CharField(max_length=10, blank=True, verbose_name='RFQ Sent')
     status = models.CharField(max_length=255, blank=True, verbose_name='Status')
     comments = models.TextField(blank=True, verbose_name='Comments')
 
