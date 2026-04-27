@@ -774,6 +774,168 @@ def rfq_resolve_duplicates(request):
 
 
 @login_required
+def rfq_download_template(request):
+    """Return a blank Excel upload template — Sheet 1: Info, Sheet 2: Materials."""
+    import io
+    from openpyxl.worksheet.datavalidation import DataValidation
+
+    hdr_fill   = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
+    hdr_font   = Font(bold=True, color='FFFFFF', size=10)
+    sec_fill   = PatternFill(start_color='1F3864', end_color='1F3864', fill_type='solid')
+    sec_font   = Font(bold=True, color='FFFFFF', size=11)
+    lbl_font   = Font(bold=True, size=10)
+    title_font = Font(bold=True, color='FFFFFF', size=13)
+    title_fill = hdr_fill
+    center     = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    left       = Alignment(horizontal='left',   vertical='center')
+
+    wb = openpyxl.Workbook()
+
+    # ── Sheet 1: Info (blank template) ───────────────────────────────────────
+    ws_info = wb.active
+    ws_info.title = 'Info'
+
+    ws_info.merge_cells('A1:F1')
+    t = ws_info['A1']
+    t.value     = 'ZEISS — Supplier Data Collection Form  |  Supplier Info & Contacts'
+    t.font      = title_font
+    t.fill      = title_fill
+    t.alignment = center
+    ws_info.row_dimensions[1].height = 22
+
+    r = 2
+
+    ws_info.merge_cells(f'A{r}:F{r}')
+    sec = ws_info[f'A{r}']
+    sec.value     = 'A  ·  SUPPLIER GENERAL'
+    sec.font      = sec_font
+    sec.fill      = sec_fill
+    sec.alignment = left
+    ws_info.row_dimensions[r].height = 18
+    r += 1
+
+    for label in ('Supplier Code', 'Supplier Company Name:'):
+        ws_info[f'A{r}'] = label
+        ws_info[f'A{r}'].font = lbl_font
+        ws_info.merge_cells(f'B{r}:F{r}')
+        r += 1
+
+    r += 1  # blank separator
+
+    ws_info.merge_cells(f'A{r}:F{r}')
+    sec2 = ws_info[f'A{r}']
+    sec2.value     = 'B  ·  CONTACT INFORMATION  |  One row per person  ·  Repeat Contact Type for multiple contacts'
+    sec2.font      = sec_font
+    sec2.fill      = sec_fill
+    sec2.alignment = left
+    ws_info.row_dimensions[r].height = 18
+    r += 1
+
+    contact_headers = ['#', 'Contact Type', 'Name', 'Email', 'Phone', 'Role / Title']
+    for ci, ch in enumerate(contact_headers, start=1):
+        cell = ws_info.cell(row=r, column=ci, value=ch)
+        cell.font      = Font(bold=True, color='FFFFFF', size=10)
+        cell.fill      = hdr_fill
+        cell.alignment = center
+    ws_info.row_dimensions[r].height = 16
+    r += 1
+
+    contact_types = [
+        'PO Confirmation', 'RFQ - Request for Quotation', 'Returns & Claims',
+        'Quality', 'Accounts Receivable', 'Escalation',
+    ]
+    for i, ct in enumerate(contact_types, start=1):
+        ws_info.cell(row=r, column=1, value=i)
+        ws_info.cell(row=r, column=2, value=ct)
+        r += 1
+
+    ws_info.column_dimensions['A'].width = 26
+    ws_info.column_dimensions['B'].width = 32
+    ws_info.column_dimensions['C'].width = 22
+    ws_info.column_dimensions['D'].width = 30
+    ws_info.column_dimensions['E'].width = 18
+    ws_info.column_dimensions['F'].width = 22
+
+    # ── Sheet 2: Materials ────────────────────────────────────────────────────
+    ws_mat = wb.create_sheet(title='Materials')
+
+    headers       = list(BULK_COLUMN_MAP.keys())
+    yes_no_fields = {'russian_steel_confirmation', 'hazmat', 'un_sds_msds',
+                     'uflpa_compliance', 'usmca_certificate', 'eol_status', 'rfq_sent'}
+    yes_no_cols   = set()
+    status_cols   = set()
+    date_cols     = set()
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws_mat.cell(row=1, column=col_idx, value=header)
+        cell.font      = hdr_font
+        cell.fill      = hdr_fill
+        cell.alignment = center
+        ws_mat.column_dimensions[get_column_letter(col_idx)].width = max(14, len(header) + 2)
+
+        field = BULK_COLUMN_MAP[header]
+        if field in yes_no_fields:
+            yes_no_cols.add(col_idx)
+        elif field == 'status':
+            status_cols.add(col_idx)
+        elif field in DATE_FIELDS:
+            date_cols.add(col_idx)
+
+    ws_mat.row_dimensions[1].height = 32
+    ws_mat.freeze_panes = 'A2'
+
+    MAX_ROW = 1001
+    dv_yn = DataValidation(type='list', formula1='"Yes,No"', allow_blank=True,
+                           showDropDown=False, showErrorMessage=True,
+                           error='Enter Yes or No', errorTitle='Invalid value')
+    dv_status = DataValidation(type='list', formula1='"Completed,Partial,None,Others"',
+                               allow_blank=True, showDropDown=False, showErrorMessage=True,
+                               error='Pick a status from the list', errorTitle='Invalid status')
+    ws_mat.add_data_validation(dv_yn)
+    ws_mat.add_data_validation(dv_status)
+
+    for col_idx in yes_no_cols:
+        col_letter = get_column_letter(col_idx)
+        dv_yn.add(f'{col_letter}2:{col_letter}{MAX_ROW}')
+    for col_idx in status_cols:
+        col_letter = get_column_letter(col_idx)
+        dv_status.add(f'{col_letter}2:{col_letter}{MAX_ROW}')
+    for col_idx in date_cols:
+        col_letter = get_column_letter(col_idx)
+        for row in range(2, MAX_ROW + 1):
+            ws_mat.cell(row=row, column=col_idx).number_format = 'YYYY-MM-DD'
+
+    # Example row (greyed-out) so users understand the expected format
+    example = {
+        'Supplier Code': 'SUP-001',
+        'Supplier Name': 'Example Supplier Ltd.',
+        'Part No':       'PN-12345',
+        'Part Description': 'Sample component description',
+        'Order Qty':     100,
+        'UOM':           'EA',
+        'Currency':      'USD',
+        'RFQ Sent':      'Yes',
+        'Status':        'None',
+    }
+    for col_idx, header in enumerate(headers, start=1):
+        if header in example:
+            cell = ws_mat.cell(row=2, column=col_idx, value=example[header])
+            cell.font      = Font(italic=True, color='888888', size=10)
+            cell.alignment = left
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    response = HttpResponse(
+        buf.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="RFQ_Upload_Template.xlsx"'
+    return response
+
+
+@login_required
 def rfq_bulk_upload(request):
     if request.method != 'POST':
         return redirect('rfq_list')

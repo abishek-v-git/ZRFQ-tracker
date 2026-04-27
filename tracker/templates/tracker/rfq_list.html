@@ -261,7 +261,10 @@
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
     </button>
-    <span class="ms-auto text-muted" style="font-size:12px;" id="entryCountBadge">{{ total_count }} entr{{ total_count|pluralize:"y,ies" }}</span>
+    <a href="{% url 'rfq_download_template' %}" class="btn btn-sm btn-outline-info ms-auto">
+        <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Template
+    </a>
+    <span class="text-muted" style="font-size:12px;" id="entryCountBadge">{{ total_count }} entr{{ total_count|pluralize:"y,ies" }}</span>
 </div>
 
 <!-- Pagination Controls (top) -->
@@ -485,9 +488,16 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted mb-3" style="font-size:13px;">
+                <p class="text-muted mb-2" style="font-size:13px;">
                     Upload one or more <strong>.xlsx</strong> files. Each file must have a header row
                     matching the tracker column names. All data rows will be added to the table.
+                </p>
+                <p class="mb-3" style="font-size:13px;">
+                    New user?
+                    <a href="{% url 'rfq_download_template' %}" class="fw-semibold text-decoration-none">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i>Download the blank template
+                    </a>
+                    — fill it in and upload it here.
                 </p>
                 <div class="mb-3">
                     <label class="form-label fw-bold">Select Excel file(s)</label>
