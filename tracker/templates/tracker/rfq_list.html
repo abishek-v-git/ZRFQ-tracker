@@ -252,6 +252,10 @@
     <a href="{% url 'rfq_export' %}" class="btn btn-success btn-sm">
         <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
     </a>
+    <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
+            {% if not total_count %}disabled{% endif %}>
+        <i class="bi bi-subtract me-1"></i>Remove Duplicates
+    </button>
     <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
@@ -477,31 +481,51 @@
                 <h6 class="modal-title text-white"><i class="bi bi-upload me-2"></i>Bulk Upload from Excel</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="{% url 'rfq_bulk_upload' %}" enctype="multipart/form-data" id="bulkForm">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <p class="text-muted mb-3" style="font-size:13px;">
-                        Upload one or more <strong>.xlsx</strong> files. Each file must have a header row
-                        matching the tracker column names. All data rows will be added to the table.
-                    </p>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Select Excel file(s)</label>
-                        <input type="file" class="form-control" name="excel_files"
-                               accept=".xlsx" multiple required id="bulkFileInput">
-                    </div>
-                    <!-- File list preview -->
-                    <div id="filePreview" class="d-none">
-                        <p class="form-label fw-bold mb-1">Files selected:</p>
-                        <ul id="fileList" class="list-group list-group-flush" style="font-size:13px;"></ul>
-                    </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3" style="font-size:13px;">
+                    Upload one or more <strong>.xlsx</strong> files. Each file must have a header row
+                    matching the tracker column names. All data rows will be added to the table.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Excel file(s)</label>
+                    <input type="file" class="form-control" name="excel_files"
+                           accept=".xlsx" multiple required id="bulkFileInput">
                 </div>
-                <div class="modal-footer py-2">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm btn-primary px-4">
-                        <i class="bi bi-upload me-1"></i>Upload & Import
-                    </button>
+                <div id="filePreview" class="d-none">
+                    <p class="form-label fw-bold mb-1">Files selected:</p>
+                    <ul id="fileList" class="list-group list-group-flush" style="font-size:13px;"></ul>
                 </div>
-            </form>
+                <div id="bulkUploadMsg" class="mt-2"></div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary px-4" id="bulkUploadBtn" onclick="submitBulkUpload()">
+                    <i class="bi bi-upload me-1"></i>Upload &amp; Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Duplicate Resolution Modal ── -->
+<div class="modal fade" id="dupModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background:#003366; color:#fff;">
+                <h6 class="modal-title fw-bold">
+                    <i class="bi bi-files me-2"></i>Duplicate Entries Found
+                    <span id="dupCounter" class="ms-2 fw-normal" style="font-size:12px;"></span>
+                </h6>
+            </div>
+            <div class="modal-body p-0" id="dupModalBody" style="max-height:70vh; overflow-y:auto;"></div>
+            <div class="modal-footer py-2 d-flex align-items-center">
+                <small class="text-muted me-auto">Choose an action for each duplicate, then click Apply.</small>
+                <button class="btn btn-sm btn-secondary" onclick="skipAllDuplicates()">Skip All (Keep Existing)</button>
+                <button class="btn btn-sm btn-warning ms-2" onclick="replaceAllDuplicates()">Replace All with New</button>
+                <button class="btn btn-sm ms-2" style="background:#003366; color:#fff;" id="applyDupBtn" onclick="applyDuplicateChoices()">
+                    <i class="bi bi-check-lg me-1"></i>Apply Choices
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -633,6 +657,29 @@
     </div>
 </div>
 
+<!-- ── Remove Duplicates Modal ── -->
+<div class="modal fade" id="dedupeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background:#856404; color:#fff;">
+                <h6 class="modal-title fw-bold"><i class="bi bi-subtract me-2"></i>Remove Duplicate Entries</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div id="dedupeInfo" class="text-center py-2">
+                    <div class="spinner-border spinner-border-sm text-warning me-2"></div>Scanning for duplicates…
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-sm btn-warning" id="dedupeConfirmBtn" disabled onclick="runDedupe()">
+                    <i class="bi bi-subtract me-1"></i>Remove Duplicates
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ── Clear All Confirmation Modal ── -->
 <div class="modal fade" id="clearAllModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
@@ -729,7 +776,7 @@ document.getElementById('deleteModal').addEventListener('show.bs.modal', functio
     document.getElementById('deleteForm').action = '/delete/' + btn.getAttribute('data-pk') + '/';
 });
 
-// ── Bulk upload file list ─────────────────────────────────────────
+// ── Bulk upload ───────────────────────────────────────────────────
 document.getElementById('bulkFileInput').addEventListener('change', function() {
     const preview = document.getElementById('filePreview');
     const list = document.getElementById('fileList');
@@ -747,6 +794,310 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
         preview.classList.add('d-none');
     }
 });
+
+function submitBulkUpload() {
+    const input = document.getElementById('bulkFileInput');
+    if (!input.files.length) { alert('Please select at least one file.'); return; }
+
+    const btn = document.getElementById('bulkUploadBtn');
+    const msgEl = document.getElementById('bulkUploadMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Uploading…';
+    msgEl.innerHTML = '';
+
+    const fd = new FormData();
+    Array.from(input.files).forEach(f => fd.append('excel_files', f));
+    fd.append('csrfmiddlewaretoken', getCsrfToken());
+
+    fetch('{% url "rfq_bulk_upload" %}', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-upload me-1"></i>Upload &amp; Import';
+        input.value = '';
+        document.getElementById('filePreview').classList.add('d-none');
+
+        const parts = [];
+        if (data.added) parts.push(`${data.added} row(s) added`);
+        if (data.identical_skipped) parts.push(`${data.identical_skipped} unchanged duplicate${data.identical_skipped > 1 ? 's' : ''} skipped`);
+        if (data.errors && data.errors.length) {
+            msgEl.innerHTML = `<div class="alert alert-warning py-1 mb-0" style="font-size:12px;">
+                ${data.errors.map(e => esc(e)).join('<br>')}</div>`;
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('bulkUploadModal')).hide();
+
+        if (data.duplicates && data.duplicates.length) {
+            openDupModal(data.duplicates, parts.join(', '));
+        } else {
+            if (parts.length) showToast(`Upload complete — ${parts.join(', ')}.`, true);
+            fetchData();
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-upload me-1"></i>Upload &amp; Import';
+        msgEl.innerHTML = '<div class="alert alert-danger py-1 mb-0" style="font-size:12px;">Upload failed. Please try again.</div>';
+    });
+}
+
+// ── Duplicate resolution ──────────────────────────────────────────
+
+// Numeric fields — compare by float value, not string
+const NUMERIC_FIELDS = new Set([
+    'order_qty','unit_price','unit_price_1','moq_1','unit_price_2','moq_2',
+    'unit_price_3','moq_3','lot_size','item_weight_kg','volume_weight_kg',
+    'lead_time_days','ship_lead_time_days',
+]);
+
+function normVal(field, val) {
+    const s = (val === null || val === undefined) ? '' : String(val).trim();
+    if (s === '') return '';
+    if (NUMERIC_FIELDS.has(field)) {
+        const n = parseFloat(s);
+        return isNaN(n) ? s : String(n);   // '1.00' → '1', '37.2700' → '37.27'
+    }
+    return s;
+}
+
+// Primary fields always shown; secondary in collapsible section
+const PRIMARY_FIELDS = [
+    ['part_description',        'Part Description'],
+    ['order_qty',               'Order Qty'],
+    ['uom',                     'UOM'],
+    ['unit_price',              'Unit Price'],
+    ['currency',                'Currency'],
+    ['pic',                     'PIC'],
+    ['contact_email',           'Contact Email'],
+    ['contact_secondary_email', 'Contact Secondary Email'],
+    ['lead_time_days',          'Lead Time (days)'],
+    ['ship_lead_time_days',     'Ship Lead Time (days)'],
+    ['coo',                     'COO'],
+    ['status',                  'Status'],
+    ['comments',                'Comments'],
+];
+
+const SECONDARY_FIELDS = [
+    ['quote_uom',               'UOM (Quote)'],
+    ['quote_currency',          'Currency (Quote)'],
+    ['unit_price_1',            'Unit Price 1'],
+    ['moq_1',                   'MOQ-1'],
+    ['unit_price_2',            'Unit Price 2'],
+    ['moq_2',                   'MOQ-2'],
+    ['unit_price_3',            'Unit Price 3'],
+    ['moq_3',                   'MOQ-3'],
+    ['lot_size',                'Lot Size'],
+    ['hts_code',                'HTS Code'],
+    ['eccn_ear99',              'ECCN/EAR99'],
+    ['manufacture_part_number', 'Manufacture Part Number'],
+    ['manufacturer_name',       'Manufacturer Name'],
+    ['manufacturer_address',    'Manufacturer Address'],
+    ['item_weight_kg',          'Item Weight (kg)'],
+    ['volume_weight_kg',        'Volume Weight (kg)'],
+    ['russian_steel_confirmation','Russian Steel Confirmation'],
+    ['hazmat',                  'Hazmat (Y/N)'],
+    ['un_sds_msds',             'UN# · SDS/MSDS'],
+    ['product_regulation',      'Product Regulation'],
+    ['eol_status',              'EOL Status'],
+    ['alternative_parts',       'Alternative Part(s)'],
+    ['alternative_part_no',     'Alternative Part No'],
+    ['mfg_address_postal_cn',   'Mfg Address + Postal (CN Only)'],
+    ['uflpa_compliance',        'UFLPA Compliance (CN Only)'],
+    ['uflpa_start_date',        'UFLPA Start Date'],
+    ['uflpa_expiry_date',       'UFLPA Expiry Date'],
+    ['usmca_certificate',       'USMCA Certificate (CA/MX Only)'],
+    ['usmca_start_date',        'USMCA Start Date'],
+    ['usmca_expiry_date',       'USMCA Expiry Date'],
+];
+
+let pendingDuplicates = [];   // [{existing, incoming}, ...]
+let dupChoices = [];          // 'keep' | 'replace' per index
+let uploadSummary = '';
+let dupModal;
+
+function openDupModal(duplicates, summary) {
+    pendingDuplicates = duplicates;
+    dupChoices = duplicates.map(() => 'keep');
+    uploadSummary = summary;
+    document.getElementById('dupCounter').textContent =
+        `— ${duplicates.length} duplicate${duplicates.length > 1 ? 's' : ''} need your review`;
+    renderDupModal();
+    dupModal = dupModal || new bootstrap.Modal(document.getElementById('dupModal'));
+    dupModal.show();
+}
+
+function buildFieldRows(fields, e, n) {
+    return fields.map(([field, label]) => {
+        const ev = e[field] ?? '', nv = n[field] ?? '';
+        const diff = normVal(field, ev) !== normVal(field, nv);
+        return `<tr ${diff ? 'style="background:#fff8e1;"' : ''}>
+            <td style="font-size:11px; color:#555; white-space:nowrap; padding:4px 8px; border:1px solid #dee2e6;">${label}</td>
+            <td style="padding:4px 8px; font-size:12px; border:1px solid #dee2e6;">${esc(ev) || '<span class="text-muted">—</span>'}</td>
+            <td style="padding:4px 8px; font-size:12px; border:1px solid #dee2e6; ${diff ? 'font-weight:600; color:#b45309;' : ''}">${esc(nv) || '<span class="text-muted">—</span>'}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderDupModal() {
+    const body = document.getElementById('dupModalBody');
+    body.innerHTML = pendingDuplicates.map((d, idx) => {
+        const e = d.existing, n = d.incoming;
+        const choice = dupChoices[idx];
+        const primaryRows   = buildFieldRows(PRIMARY_FIELDS, e, n);
+        const secondaryRows = buildFieldRows(SECONDARY_FIELDS, e, n);
+        const secDiffCount  = SECONDARY_FIELDS.filter(([f]) => normVal(f, e[f] ?? '') !== normVal(f, n[f] ?? '')).length;
+
+        return `
+        <div class="dup-card border-bottom" style="padding:16px;">
+            <div class="d-flex align-items-start justify-content-between mb-2 flex-wrap gap-2">
+                <div>
+                    <span class="badge" style="background:#003366; font-size:11px;">${idx + 1} / ${pendingDuplicates.length}</span>
+                    <strong class="ms-2" style="font-size:13px;">${esc(e.supplier_code)} · ${esc(e.supplier_name)} · ${esc(e.part_no)}</strong>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm ${choice === 'keep' ? 'btn-success' : 'btn-outline-secondary'}"
+                            style="font-size:11px;" onclick="setDupChoice(${idx}, 'keep')">
+                        <i class="bi bi-lock me-1"></i>Keep Existing
+                    </button>
+                    <button class="btn btn-sm ${choice === 'replace' ? 'btn-warning' : 'btn-outline-secondary'}"
+                            style="font-size:11px;" onclick="setDupChoice(${idx}, 'replace')">
+                        <i class="bi bi-arrow-repeat me-1"></i>Replace with New
+                    </button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table style="width:100%; border-collapse:collapse; border:1px solid #dee2e6;">
+                    <thead>
+                        <tr style="background:#f8f9fa; font-size:11px; font-weight:600; color:#555;">
+                            <th style="padding:5px 8px; width:200px; border:1px solid #dee2e6;">Field</th>
+                            <th style="padding:5px 8px; border:1px solid #dee2e6;">
+                                <i class="bi bi-database me-1 text-secondary"></i>Existing (in DB)
+                            </th>
+                            <th style="padding:5px 8px; border:1px solid #dee2e6;">
+                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>Incoming (from file)
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${primaryRows}
+                        <tr>
+                            <td colspan="3" style="padding:0; border:none;">
+                                <details>
+                                    <summary style="padding:6px 8px; font-size:11px; font-weight:600; color:#003366;
+                                                   cursor:pointer; background:#f0f4ff; border-top:1px solid #dee2e6;
+                                                   list-style:none; display:flex; align-items:center; gap:6px;">
+                                        <i class="bi bi-chevron-right" style="font-size:10px;"></i>
+                                        Show all fields
+                                        ${secDiffCount ? `<span class="badge bg-warning text-dark ms-1" style="font-size:10px;">${secDiffCount} difference${secDiffCount > 1 ? 's' : ''}</span>` : ''}
+                                    </summary>
+                                    <table style="width:100%; border-collapse:collapse;">
+                                        <tbody>${secondaryRows}</tbody>
+                                    </table>
+                                </details>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function setDupChoice(idx, choice) {
+    dupChoices[idx] = choice;
+    renderDupModal();
+}
+
+function skipAllDuplicates()   { dupChoices = dupChoices.map(() => 'keep');    renderDupModal(); }
+function replaceAllDuplicates(){ dupChoices = dupChoices.map(() => 'replace'); renderDupModal(); }
+
+function applyDuplicateChoices() {
+    const btn = document.getElementById('applyDupBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Applying…';
+
+    const resolutions = pendingDuplicates.map((d, idx) => ({
+        pk:     d.existing.pk,
+        action: dupChoices[idx],
+        data:   dupChoices[idx] === 'replace' ? d.incoming : {},
+    }));
+
+    fetch('{% url "rfq_resolve_duplicates" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ resolutions }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        dupModal.hide();
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Apply Choices';
+        const replaced = data.replaced || 0;
+        const kept = dupChoices.filter(c => c === 'keep').length;
+        const parts = [];
+        if (uploadSummary) parts.push(uploadSummary);
+        if (replaced) parts.push(`${replaced} duplicate(s) replaced`);
+        if (kept) parts.push(`${kept} duplicate(s) kept`);
+        showToast(parts.join(' · '), true);
+        fetchData();
+    });
+}
+
+// ── Remove Duplicates ─────────────────────────────────────────────
+let dedupeModalInst;
+
+function openDedupeModal() {
+    dedupeModalInst = dedupeModalInst || new bootstrap.Modal(document.getElementById('dedupeModal'));
+    const infoEl = document.getElementById('dedupeInfo');
+    const confirmBtn = document.getElementById('dedupeConfirmBtn');
+    infoEl.innerHTML = '<div class="spinner-border spinner-border-sm text-warning me-2"></div>Scanning for duplicates…';
+    confirmBtn.disabled = true;
+    dedupeModalInst.show();
+
+    fetch('{% url "rfq_deduplicate" %}', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(r => r.json())
+    .then(data => {
+        const n = data.duplicate_rows || 0;
+        if (n === 0) {
+            infoEl.innerHTML = '<i class="bi bi-check-circle text-success me-2"></i><strong>No duplicates found.</strong> All entries are unique.';
+            confirmBtn.disabled = true;
+        } else {
+            infoEl.innerHTML = `
+                <p class="mb-2">Found <strong>${n} duplicate row${n > 1 ? 's' : ''}</strong> sharing the same
+                <em>Supplier Code + Supplier Name + Part No</em>.</p>
+                <p class="mb-0 text-muted" style="font-size:12px;">
+                    For each duplicate group, the entry with the most data filled in will be kept.
+                    If tied, the earliest entry is kept.
+                </p>`;
+            confirmBtn.disabled = false;
+        }
+    });
+}
+
+function runDedupe() {
+    const confirmBtn = document.getElementById('dedupeConfirmBtn');
+    const infoEl = document.getElementById('dedupeInfo');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Removing…';
+
+    fetch('{% url "rfq_deduplicate" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(r => r.json())
+    .then(data => {
+        dedupeModalInst.hide();
+        confirmBtn.innerHTML = '<i class="bi bi-subtract me-1"></i>Remove Duplicates';
+        showToast(`Removed ${data.removed} duplicate row${data.removed !== 1 ? 's' : ''}.`, true);
+        fetchData();
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const addModalEl = document.getElementById('addModal');

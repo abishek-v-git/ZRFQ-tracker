@@ -76,10 +76,15 @@ HEADER_ALIASES = {
     'MOQ - 3':                  'MOQ-3',
     # Merged two-row headers (row1 + row2 combined text)
     'Manufacturer Address (Street|City|ZIP|Country)': 'Manufacturer Address',
-    'Start Date':               'UFLPA Start Date',
-    'Expiry Date':              'UFLPA Expiry Date',
-    'Start Date (MM/DD/YYYY)':  'UFLPA Start Date',
-    'Expiry Date (MM/DD/YYYY)': 'UFLPA Expiry Date',
+    'Start Date':                   'UFLPA Start Date',
+    'Expiry Date':                  'UFLPA Expiry Date',
+    'Start Date (MM/DD/YYYY)':      'UFLPA Start Date',
+    'Expiry Date (MM/DD/YYYY)':     'UFLPA Expiry Date',
+    # Wrapped-cell variants — Excel newline inside "(MM/DD/YYY\nY)" → space after normalization
+    'Start Date (MM/DD/YYY Y)':     'UFLPA Start Date',
+    'Expiry Date (MM/DD/YYY Y)':    'UFLPA Expiry Date',
+    'Start Date (MM/DD/YY YY)':     'UFLPA Start Date',
+    'Expiry Date (MM/DD/YY YY)':    'UFLPA Expiry Date',
     # Columns that may appear without their parenthetical suffix
     'UFLPA Compliance':                     'UFLPA Compliance (CN Only)',
     'UFLPA Compliance Statement':           'UFLPA Compliance (CN Only)',
@@ -134,6 +139,15 @@ def _resolve_header(text):
     canonical2 = HEADER_ALIASES.get(collapsed)
     if canonical2 and canonical2 in BULK_COLUMN_MAP:
         return BULK_COLUMN_MAP[canonical2]
+    # Last resort: strip the trailing parenthetical entirely.
+    # Handles wrapped cells where "(MM/DD/YYYY)" becomes "(MM/DD/YYY Y)" or similar.
+    stripped = re.sub(r'\s*\(.*', '', norm).strip()
+    if stripped and stripped != norm:
+        if stripped in BULK_COLUMN_MAP:
+            return BULK_COLUMN_MAP[stripped]
+        canonical3 = HEADER_ALIASES.get(stripped)
+        if canonical3 and canonical3 in BULK_COLUMN_MAP:
+            return BULK_COLUMN_MAP[canonical3]
     return None
 
 
@@ -158,19 +172,15 @@ def _coerce(field, value):
             return value if isinstance(value, datetime.date) else value.date()
         s = str(value).strip()
         if not s: return None
-        # Try DD/MM/YYYY first (as requested by user)
-        try:
-            return datetime.datetime.strptime(s, '%d/%m/%Y').date()
-        except ValueError:
-            # Fallback to MM/DD/YYYY
+        # Strip time component if present (e.g. "2021-01-29T00:00:00" → "2021-01-29")
+        s = s.split('T')[0].strip()
+        # Column headers say MM/DD/YYYY — try that first
+        for fmt in ('%m/%d/%Y', '%d/%m/%Y', '%Y-%m-%d', '%m/%d/%y', '%d/%m/%y'):
             try:
-                return datetime.datetime.strptime(s, '%m/%d/%Y').date()
+                return datetime.datetime.strptime(s, fmt).date()
             except ValueError:
-                # Fallback to ISO YYYY-MM-DD
-                try:
-                    return datetime.datetime.strptime(s, '%Y-%m-%d').date()
-                except ValueError:
-                    return None
+                continue
+        return None
     return str(value).strip()
 
 
@@ -669,6 +679,80 @@ def _parse_info_sheet(ws):
     return supplier_code, company_name, contacts
 
 
+def _entries_identical(existing, incoming_kwargs):
+    """Return True when every incoming field matches the existing DB row.
+    Status and comments are skipped — they are manually maintained.
+
+    Uses the same serialisation path as _entry_to_dict / _kwargs_to_display
+    so that Decimal('6.00') and float 6.0 are treated as equal.
+    """
+    SKIP = {'status', 'comments'}
+
+    def _norm(field, s):
+        """Normalise a serialised string value for comparison."""
+        s = (s or '').strip()
+        if field in DECIMAL_FIELDS or field in INT_FIELDS:
+            try:
+                return str(float(s))   # '6.00'→'6.0', '51.0500'→'51.05'
+            except (ValueError, TypeError):
+                pass
+        return s
+
+    existing_dict  = _entry_to_dict(existing)        # Decimal/date → string
+    incoming_strs  = _kwargs_to_display(incoming_kwargs)  # float/date → string
+
+    for field, new_str in incoming_strs.items():
+        if field in SKIP:
+            continue
+        existing_str = existing_dict.get(field, '')
+        if _norm(field, existing_str) != _norm(field, new_str):
+            return False
+    return True
+
+
+def _kwargs_to_display(kwargs):
+    """Serialize a coerced kwargs dict to JSON-safe strings (mirrors _entry_to_dict format)."""
+    def _s(v):
+        if v is None:
+            return ''
+        if isinstance(v, datetime.datetime):
+            return v.date().isoformat()   # "2021-01-29", not "2021-01-29T00:00:00"
+        if isinstance(v, datetime.date):
+            return v.isoformat()
+        return str(v)
+    return {k: _s(v) for k, v in kwargs.items()}
+
+
+@login_required
+def rfq_resolve_duplicates(request):
+    """Apply keep/replace choices returned by the duplicate resolution modal."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid JSON'}, status=400)
+
+    replaced = 0
+    for res in data.get('resolutions', []):
+        if res.get('action') != 'replace':
+            continue
+        pk = res.get('pk')
+        if not pk:
+            continue
+        try:
+            entry = RFQEntry.objects.get(pk=int(pk))
+        except (RFQEntry.DoesNotExist, ValueError):
+            continue
+        for field, raw in res.get('data', {}).items():
+            if hasattr(entry, field) and field not in ('pk', 'id'):
+                setattr(entry, field, _coerce(field, raw if raw != '' else None))
+        entry.save()
+        replaced += 1
+
+    return JsonResponse({'ok': True, 'replaced': replaced})
+
+
 @login_required
 def rfq_bulk_upload(request):
     if request.method != 'POST':
@@ -683,6 +767,8 @@ def rfq_bulk_upload(request):
     sup_created = 0
     sup_updated = 0
     errors = []
+    duplicates = []
+    identical_skipped = 0
 
     for f in files:
         try:
@@ -770,14 +856,40 @@ def rfq_bulk_upload(request):
                 if not kwargs.get('supplier_code') and not kwargs.get('supplier_name'):
                     continue
 
-                RFQEntry.objects.create(**kwargs)
-                added += 1
+                existing = RFQEntry.objects.filter(
+                    supplier_code=kwargs.get('supplier_code') or '',
+                    supplier_name=kwargs.get('supplier_name') or '',
+                    part_no=kwargs.get('part_no') or '',
+                ).first()
+
+                if existing:
+                    if _entries_identical(existing, kwargs):
+                        identical_skipped += 1   # no real change — skip silently
+                    else:
+                        duplicates.append({
+                            'existing': _entry_to_dict(existing),
+                            'incoming': _kwargs_to_display(kwargs),
+                        })
+                else:
+                    RFQEntry.objects.create(**kwargs)
+                    added += 1
 
             total_added += added
 
         except Exception as e:
             errors.append(f"{f.name}: {e}")
 
+    # AJAX request — return JSON so the frontend can show duplicate resolution UI
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'ok': True,
+            'added': total_added,
+            'identical_skipped': identical_skipped,
+            'duplicates': duplicates,
+            'errors': errors,
+        })
+
+    # Fallback plain POST (no AJAX) — original redirect behaviour
     parts = []
     if total_added:
         parts.append(f'{total_added} RFQ row(s) added')
@@ -790,8 +902,46 @@ def rfq_bulk_upload(request):
     if errors:
         for err in errors:
             messages.error(request, err)
-
     return redirect('rfq_list')
+
+
+@login_required
+def rfq_deduplicate(request):
+    """
+    GET  → return count of duplicate rows that would be removed (dry-run).
+    POST → remove them, keeping the entry with the most filled fields per group.
+    """
+    from django.db.models import Count
+
+    groups = (
+        RFQEntry.objects
+        .values('supplier_code', 'supplier_name', 'part_no')
+        .annotate(cnt=Count('pk'))
+        .filter(cnt__gt=1)
+    )
+
+    SCORE_FIELDS = ['status', 'comments', 'contact_email', 'pic',
+                    'unit_price', 'lead_time_days', 'coo']
+
+    def _score(entry):
+        return sum(1 for f in SCORE_FIELDS if getattr(entry, f, None) not in (None, ''))
+
+    if request.method == 'GET':
+        total_dupes = sum(g['cnt'] - 1 for g in groups)
+        return JsonResponse({'ok': True, 'duplicate_rows': total_dupes})
+
+    removed = 0
+    for g in groups:
+        entries = list(RFQEntry.objects.filter(
+            supplier_code=g['supplier_code'],
+            supplier_name=g['supplier_name'],
+            part_no=g['part_no'],
+        ).order_by('pk'))
+        best = max(entries, key=lambda e: (_score(e), -e.pk))
+        pks_to_delete = [e.pk for e in entries if e.pk != best.pk]
+        removed += RFQEntry.objects.filter(pk__in=pks_to_delete).delete()[0]
+
+    return JsonResponse({'ok': True, 'removed': removed})
 
 
 @login_required
