@@ -407,7 +407,7 @@ def rfq_export(request):
     lbl_font  = Font(bold=True, size=10)
     title_font = Font(bold=True, color='FFFFFF', size=13)
     title_fill = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
-    mfr_fill  = PatternFill(start_color='FFFBEA', end_color='FFFBEA', fill_type='solid')
+
     center    = Alignment(horizontal='center', vertical='center')
     left      = Alignment(horizontal='left',   vertical='center')
 
@@ -590,8 +590,6 @@ def rfq_export(request):
         ]
         for col_idx, value in enumerate(row, start=1):
             cell = ws_mat.cell(row=row_idx, column=col_idx, value=value)
-            if col_idx == 26:   # Manufacture Part Number
-                cell.fill = mfr_fill
 
     # Auto-fit Materials columns
     for col_idx, header in enumerate(mat_headers, start=1):
@@ -609,7 +607,8 @@ def rfq_export(request):
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = 'attachment; filename="RFQ_Tracker_Export.xlsx"'
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    response['Content-Disposition'] = f'attachment; filename="RFQ_Tracker_Export_{timestamp}.xlsx"'
     wb.save(response)
     return response
 
