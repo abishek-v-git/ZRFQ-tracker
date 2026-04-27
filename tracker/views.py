@@ -233,7 +233,22 @@ def rfq_list(request):
     form = RFQEntryForm()
     edit_form = RFQEntryForm(prefix='edit')
     total_count = RFQEntry.objects.count()
-    return render(request, 'tracker/rfq_list.html', {'total_count': total_count, 'form': form, 'edit_form': edit_form})
+    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
+    ctx = {
+        'total_count': total_count,
+        'form': form,
+        'edit_form': edit_form,
+        'stats': {
+            'total_suppliers': RFQEntry.objects.values('supplier_code').distinct().count(),
+            'sent':      RFQEntry.objects.exclude(status='').count(),
+            'not_sent':  RFQEntry.objects.filter(status='').count(),
+            'partial':   RFQEntry.objects.filter(status='Partially Data Received').count(),
+            'completed': RFQEntry.objects.filter(status='Completed').count(),
+            'no_resp':   RFQEntry.objects.filter(status='No Response Yet').count(),
+            'not_valid': RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count(),
+        },
+    }
+    return render(request, 'tracker/rfq_list.html', ctx)
 
 
 @login_required

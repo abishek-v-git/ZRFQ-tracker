@@ -158,7 +158,81 @@
         display: none;
     }
 
+    /* Dashboard summary cards */
+    .dashboard-cards {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .dash-card {
+        background: #fff;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        padding: 14px 18px 12px;
+        min-width: 110px;
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+    }
+    .dash-bar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 5px;
+        border-radius: 6px 6px 0 0;
+    }
+    .dash-num {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-top: 2px;
+    }
+    .dash-label {
+        font-size: 11px;
+        color: #555;
+        margin-top: 5px;
+        line-height: 1.3;
+    }
+
 </style>
+
+<!-- ── Dashboard Cards ── -->
+<div class="dashboard-cards mb-3">
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#003366;"></div>
+        <div class="dash-num" style="color:#003366;">{{ stats.total_suppliers }}</div>
+        <div class="dash-label">Total Suppliers</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#003366;"></div>
+        <div class="dash-num" style="color:#003366;">{{ stats.sent }}</div>
+        <div class="dash-label">Requests Sent</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#b94a00;"></div>
+        <div class="dash-num" style="color:#b94a00;">{{ stats.not_sent }}</div>
+        <div class="dash-label">Requests Not Sent</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#e6a800;"></div>
+        <div class="dash-num" style="color:#e6a800;">{{ stats.partial }}</div>
+        <div class="dash-label">Partial Response Received</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#1a7a3c;"></div>
+        <div class="dash-num" style="color:#1a7a3c;">{{ stats.completed }}</div>
+        <div class="dash-label">Response Received</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#c47900;"></div>
+        <div class="dash-num" style="color:#c47900;">{{ stats.not_valid }}</div>
+        <div class="dash-label">Response (Not Valid)</div>
+    </div>
+    <div class="dash-card">
+        <div class="dash-bar" style="background:#6c757d;"></div>
+        <div class="dash-num" style="color:#6c757d;">{{ stats.no_resp }}</div>
+        <div class="dash-label">No Response</div>
+    </div>
+</div>
 
 <!-- Top Action Bar -->
 <div class="d-flex align-items-center gap-2 mb-3">
@@ -301,7 +375,7 @@
 </div>
 
 <!-- ── Add New Item Modal ── -->
-<div class="modal fade" id="addModal" tabindex="-1">
+<div class="modal fade" id="addModal" tabindex="-1" data-has-errors="{% if form.errors %}1{% else %}0{% endif %}">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header py-2" style="background:#003366;">
@@ -674,9 +748,12 @@ document.getElementById('bulkFileInput').addEventListener('change', function() {
     }
 });
 
-if ({% if form.errors %}true{% else %}false{% endif %}) {
-    new bootstrap.Modal(document.getElementById('addModal')).show();
-}
+document.addEventListener('DOMContentLoaded', function () {
+    const addModalEl = document.getElementById('addModal');
+    if (addModalEl && addModalEl.dataset.hasErrors === '1') {
+        new bootstrap.Modal(addModalEl).show();
+    }
+});
 
 // ── Status helpers ────────────────────────────────────────────────
 function getStatusClass(status) {
