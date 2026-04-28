@@ -1163,7 +1163,14 @@ function patchField(pk, field, value, feedbackEl) {
         if (data.ok) {
             if (feedbackEl) { feedbackEl.classList.add('is-saved'); setTimeout(() => feedbackEl.classList.remove('is-saved'), 1500); }
             showToast('Saved', true);
-            if (field === 'status') updateDashboard();
+            if (field === 'status') {
+                updateDashboard();
+                const tr = feedbackEl ? feedbackEl.closest('tr') : document.querySelector(`tr[data-pk="${pk}"]`);
+                if (tr) {
+                    const rfqSel = tr.querySelector('select[data-field="rfq_sent"]');
+                    if (rfqSel) rfqSel.value = value ? 'Yes' : 'No';
+                }
+            }
         } else {
             showToast('Save failed', false);
         }
@@ -1644,6 +1651,18 @@ document.getElementById('bulkApplyBtn').addEventListener('click', function() {
                         this.classList.add('is-saved');
                         setTimeout(() => this.classList.remove('is-saved'), 1500);
                         showToast('Saved', true);
+                        if (field === 'rfq_sent' && value === 'No') {
+                            const tr2 = this.closest('tr');
+                            if (tr2) {
+                                const statusSel = tr2.querySelector('select.status-sel');
+                                const statusTxt = tr2.querySelector('.status-txt');
+                                const badge = tr2.querySelector('.status-badge-container');
+                                if (statusSel) statusSel.value = '';
+                                if (statusTxt) { statusTxt.value = ''; statusTxt.style.display = 'none'; }
+                                if (badge) badge.className = 'status-badge-container ' + getStatusClass('');
+                                updateDashboard();
+                            }
+                        }
                     } else { this.value = prev; showToast('Save failed', false); }
                 })
                 .catch(() => { this.classList.remove('is-saving'); this.value = prev; showToast('Save failed', false); });

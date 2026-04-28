@@ -107,7 +107,7 @@ class RFQEntry(models.Model):
     usmca_expiry_date = models.DateField(null=True, blank=True, verbose_name='USMCA Expiry Date')
 
     # ── Workflow ──────────────────────────────────────────────────────────────
-    rfq_sent = models.CharField(max_length=10, blank=True, verbose_name='RFQ Sent')
+    rfq_sent = models.CharField(max_length=10, blank=True, default='No', verbose_name='RFQ Sent')
     status = models.CharField(max_length=255, blank=True, verbose_name='Status')
     comments = models.TextField(blank=True, verbose_name='Comments')
 
@@ -117,6 +117,14 @@ class RFQEntry(models.Model):
         ordering = ['id']
         verbose_name = 'RFQ Entry'
         verbose_name_plural = 'RFQ Entries'
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if update_fields is None or 'status' in update_fields:
+            self.rfq_sent = 'Yes' if self.status else 'No'
+            if update_fields is not None:
+                kwargs['update_fields'] = list(update_fields) + ['rfq_sent']
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.supplier_name} — {self.part_no}"

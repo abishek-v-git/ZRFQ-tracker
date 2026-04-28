@@ -1149,7 +1149,8 @@ def rfq_bulk_status(request):
         return JsonResponse({'ok': False, 'error': 'Invalid request.'}, status=400)
     if not pks:
         return JsonResponse({'ok': False, 'error': 'No rows selected.'}, status=400)
-    updated = RFQEntry.objects.filter(pk__in=pks).update(status=status)
+    rfq_sent = 'Yes' if status else 'No'
+    updated = RFQEntry.objects.filter(pk__in=pks).update(status=status, rfq_sent=rfq_sent)
     return JsonResponse({'ok': True, 'updated': updated})
 
 
@@ -1173,7 +1174,11 @@ def rfq_patch(request, pk):
     if field not in PATCHABLE:
         return JsonResponse({'ok': False, 'error': 'Field not allowed'}, status=400)
     setattr(entry, field, value)
-    entry.save(update_fields=[field])
+    if field == 'rfq_sent' and value == 'No':
+        entry.status = ''
+        entry.save(update_fields=[field, 'status'])
+    else:
+        entry.save(update_fields=[field])
     return JsonResponse({'ok': True})
 
 
