@@ -1027,31 +1027,47 @@ def rfq_bulk_upload(request):
                 ws = wb.active
 
             # ── Build header → column-index map ──────────────────────
+            # Scan up to first 10 rows to find the actual header row,
+            # since supplier templates often have instruction rows above headers.
             headers = {}
-            row1_cells = list(ws[1])
-            row2_cells = list(ws[2]) if ws.max_row >= 2 else []
             data_start_row = 2
             uses_row2_header = False
 
-            for ci, cell in enumerate(row1_cells):
-                r1 = _normalize_header(cell.value)
-                field = _resolve_header(r1)
+            MAX_HEADER_SCAN = 10
+            scan_limit = min(ws.max_row, MAX_HEADER_SCAN + 1)
+            scanned_rows = [
+                list(ws[r]) for r in range(1, scan_limit + 1)
+            ]
 
-                if not field and ci < len(row2_cells) and row2_cells[ci].value:
-                    r2 = _normalize_header(row2_cells[ci].value)
-                    combined = f"{r1} {r2}".strip()
-                    field = _resolve_header(combined)
+            for scan_idx, row_cells in enumerate(scanned_rows[:MAX_HEADER_SCAN]):
+                candidate = {}
+                combined_used = False
+                next_row_cells = scanned_rows[scan_idx + 1] if scan_idx + 1 < len(scanned_rows) else []
+
+                for ci, cell in enumerate(row_cells):
+                    r1 = _normalize_header(cell.value)
+                    field = _resolve_header(r1)
+
+                    if not field and ci < len(next_row_cells) and next_row_cells[ci].value:
+                        r2 = _normalize_header(next_row_cells[ci].value)
+                        combined = f"{r1} {r2}".strip()
+                        field = _resolve_header(combined)
+                        if field:
+                            combined_used = True
+
                     if field:
-                        uses_row2_header = True
+                        if field in candidate:
+                            field = DUPLICATE_FIELD_MAP.get(field)
+                        if field and field not in candidate:
+                            candidate[field] = ci + 1
 
-                if field:
-                    if field in headers:
-                        field = DUPLICATE_FIELD_MAP.get(field)
-                    if field and field not in headers:
-                        headers[field] = ci + 1
-
-            if uses_row2_header:
-                data_start_row = 3
+                if 'supplier_code' in candidate or 'supplier_name' in candidate or 'part_no' in candidate:
+                    headers = candidate
+                    uses_row2_header = combined_used
+                    data_start_row = scan_idx + 2      # row after header row
+                    if uses_row2_header:
+                        data_start_row += 1
+                    break
 
             if 'supplier_code' not in headers and 'supplier_name' not in headers:
                 errors.append(f"{f.name}: could not find recognisable column headers in Materials sheet.")
