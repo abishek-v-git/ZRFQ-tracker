@@ -240,41 +240,48 @@ def _entry_to_dict(entry):
     }
 
 
+def _compute_stats():
+    from django.db.models import Count, Q, F
+    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
+    fully_completed_suppliers = (
+        RFQEntry.objects
+        .values('supplier_code')
+        .annotate(
+            total=Count('pk'),
+            completed_count=Count('pk', filter=Q(status='Completed')),
+        )
+        .filter(total=F('completed_count'))
+        .count()
+    )
+    return {
+        'total_suppliers':         RFQEntry.objects.values('supplier_code').distinct().count(),
+        'sent':                    RFQEntry.objects.exclude(status='').count(),
+        'not_sent':                RFQEntry.objects.filter(status='').count(),
+        'partial':                 RFQEntry.objects.filter(status='Partially Data Received').count(),
+        'completed':               RFQEntry.objects.filter(status='Completed').count(),
+        'no_resp':                 RFQEntry.objects.filter(status='No Response Yet').count(),
+        'not_valid':               RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count(),
+        'fully_completed_suppliers': fully_completed_suppliers,
+    }
+
+
 @login_required
 def rfq_list(request):
     form = RFQEntryForm()
     edit_form = RFQEntryForm(prefix='edit')
     total_count = RFQEntry.objects.count()
-    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
     ctx = {
         'total_count': total_count,
         'form': form,
         'edit_form': edit_form,
-        'stats': {
-            'total_suppliers': RFQEntry.objects.values('supplier_code').distinct().count(),
-            'sent':      RFQEntry.objects.exclude(status='').count(),
-            'not_sent':  RFQEntry.objects.filter(status='').count(),
-            'partial':   RFQEntry.objects.filter(status='Partially Data Received').count(),
-            'completed': RFQEntry.objects.filter(status='Completed').count(),
-            'no_resp':   RFQEntry.objects.filter(status='No Response Yet').count(),
-            'not_valid': RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count(),
-        },
+        'stats': _compute_stats(),
     }
     return render(request, 'tracker/rfq_list.html', ctx)
 
 
 @login_required
 def rfq_stats(request):
-    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
-    return JsonResponse({
-        'total_suppliers': RFQEntry.objects.values('supplier_code').distinct().count(),
-        'sent':      RFQEntry.objects.exclude(status='').count(),
-        'not_sent':  RFQEntry.objects.filter(status='').count(),
-        'partial':   RFQEntry.objects.filter(status='Partially Data Received').count(),
-        'completed': RFQEntry.objects.filter(status='Completed').count(),
-        'no_resp':   RFQEntry.objects.filter(status='No Response Yet').count(),
-        'not_valid': RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count(),
-    })
+    return JsonResponse(_compute_stats())
 
 
 @login_required
@@ -294,7 +301,33 @@ def rfq_data(request):
         sort_col = -1
     sort_dir = request.GET.get('sort_dir', 'asc')
 
+    card   = request.GET.get('card', '').strip()
+    KNOWN  = {'Completed', 'Partially Data Received', 'No Response Yet'}
+
     qs = RFQEntry.objects.all()
+
+    if card == 'sent':
+        qs = qs.exclude(status='')
+    elif card == 'not_sent':
+        qs = qs.filter(status='')
+    elif card == 'partial':
+        qs = qs.filter(status='Partially Data Received')
+    elif card == 'completed':
+        qs = qs.filter(status='Completed')
+    elif card == 'no_resp':
+        qs = qs.filter(status='No Response Yet')
+    elif card == 'not_valid':
+        qs = qs.exclude(status='').exclude(status__in=KNOWN)
+    elif card == 'fully_completed_suppliers':
+        from django.db.models import Count, F
+        completed_codes = (
+            RFQEntry.objects
+            .values('supplier_code')
+            .annotate(total=Count('pk'), completed_count=Count('pk', filter=Q(status='Completed')))
+            .filter(total=F('completed_count'))
+            .values_list('supplier_code', flat=True)
+        )
+        qs = qs.filter(supplier_code__in=list(completed_codes))
 
     if q:
         qs = qs.filter(
