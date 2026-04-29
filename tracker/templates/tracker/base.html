@@ -115,6 +115,62 @@
 
         /* Handle z-index for the highlighted MFR column so it doesn't overlap sticky actions */
         .col-mfr-pn { position: relative; z-index: 1; }
+
+        /* ── Sticky Left Columns (Checkbox · # · Supplier Name · Part No) ── */
+        /* Fixed widths — offsets below depend on these values:
+           col1=36px, col2=36px, col3(supplier code, not sticky)=95px,
+           col4 left = 72px, col5 left = 222px                           */
+        table.rfq-table th:nth-child(1), table.rfq-table td:nth-child(1) { width: 36px;  min-width: 36px;  left: 0;    }
+        table.rfq-table th:nth-child(2), table.rfq-table td:nth-child(2) { width: 36px;  min-width: 36px;  left: 36px; }
+        table.rfq-table th:nth-child(4), table.rfq-table td:nth-child(4) { width: 150px; min-width: 150px; left: 72px; }
+        table.rfq-table th:nth-child(5), table.rfq-table td:nth-child(5) { width: 120px; min-width: 120px; left: 222px; }
+
+        /* Make them sticky */
+        table.rfq-table th:nth-child(1), table.rfq-table td:nth-child(1),
+        table.rfq-table th:nth-child(2), table.rfq-table td:nth-child(2),
+        table.rfq-table th:nth-child(4), table.rfq-table td:nth-child(4),
+        table.rfq-table th:nth-child(5), table.rfq-table td:nth-child(5) {
+            position: sticky;
+            z-index: 3;
+        }
+
+        /* Subtle freeze line after Part No (col 5) */
+        table.rfq-table th:nth-child(5),
+        table.rfq-table td:nth-child(5) {
+            border-right: 1px solid #c8d0d8;
+        }
+
+        /* Header backgrounds — must sit above body cells and right sticky headers */
+        table.rfq-table th:nth-child(1),
+        table.rfq-table th:nth-child(2),
+        table.rfq-table th:nth-child(4),
+        table.rfq-table th:nth-child(5) {
+            z-index: 20;
+            background: #003366 !important;
+        }
+
+        /* Body cell backgrounds */
+        table.rfq-table td:nth-child(1),
+        table.rfq-table td:nth-child(2),
+        table.rfq-table td:nth-child(4),
+        table.rfq-table td:nth-child(5) {
+            background: #fff;
+        }
+
+        /* Hover state */
+        table.rfq-table tbody tr:hover td:nth-child(1),
+        table.rfq-table tbody tr:hover td:nth-child(2),
+        table.rfq-table tbody tr:hover td:nth-child(4),
+        table.rfq-table tbody tr:hover td:nth-child(5) {
+            background: #eef3fb;
+        }
+
+        /* Truncate long supplier names */
+        table.rfq-table td:nth-child(4) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
     </style>
 </head>
 <body>

@@ -158,14 +158,23 @@ def _coerce(field, value):
         if field in DECIMAL_FIELDS or field in INT_FIELDS or field in DATE_FIELDS:
             return None
         return ''
+    s = str(value).strip()
+    # Treat Excel formula errors (#N/A, #REF!, etc.) and explicit N/A text as empty
+    if s.startswith('#') or s.upper() in ('N/A', 'NA', 'NOT REQUIRED', 'NOT APPLICABLE'):
+        if field in DECIMAL_FIELDS or field in INT_FIELDS or field in DATE_FIELDS:
+            return None
+        return ''
     if field in DECIMAL_FIELDS:
+        # Strip trailing units/letters (e.g. "30pcs" → "30", "1.5kg" → "1.5")
+        cleaned = re.sub(r'[^\d.]+$', '', s.replace(',', '')).strip()
         try:
-            return float(str(value).replace(',', ''))
+            return float(cleaned) if cleaned else None
         except (ValueError, TypeError):
             return None
     if field in INT_FIELDS:
+        cleaned = re.sub(r'[^\d]+$', '', s.replace(',', '')).strip()
         try:
-            return int(float(str(value).replace(',', '')))
+            return int(float(cleaned)) if cleaned else None
         except (ValueError, TypeError):
             return None
     if field in DATE_FIELDS:
