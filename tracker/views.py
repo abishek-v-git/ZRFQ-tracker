@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
+from django.db import models as django_models
 from .models import RFQEntry, Supplier, SupplierContact
 from .forms import RFQEntryForm
 from functools import wraps
@@ -1013,8 +1014,12 @@ def rfq_bulk_upload(request):
     if request.method != 'POST':
         return redirect('rfq_list')
 
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     files = request.FILES.getlist('excel_files')
     if not files:
+        if is_ajax:
+            return JsonResponse({'ok': False, 'error': 'No files selected.'}, status=400)
         messages.error(request, 'No files selected.')
         return redirect('rfq_list')
 
@@ -1025,7 +1030,8 @@ def rfq_bulk_upload(request):
     duplicates = []
     identical_skipped = 0
 
-    for f in files:
+    try:
+     for f in files:
         try:
             wb = openpyxl.load_workbook(f, data_only=True)
 
@@ -1134,10 +1140,17 @@ def rfq_bulk_upload(request):
                 if not kwargs.get('rfq_sent'):
                     kwargs['rfq_sent'] = 'Yes'
 
+                lookup_code = (kwargs.get('supplier_code') or '').strip()
+                lookup_name = (kwargs.get('supplier_name') or '').strip()
+                lookup_part = (kwargs.get('part_no') or '').strip()
+
                 existing = RFQEntry.objects.filter(
-                    supplier_code=kwargs.get('supplier_code') or '',
-                    supplier_name=kwargs.get('supplier_name') or '',
-                    part_no=kwargs.get('part_no') or '',
+                    supplier_name__iexact=lookup_name,
+                    part_no__iexact=lookup_part,
+                ).filter(
+                    django_models.Q(supplier_code=lookup_code) |
+                    django_models.Q(supplier_code=lookup_code + '.0') |
+                    django_models.Q(supplier_code=lookup_code.rstrip('0').rstrip('.') if '.' in lookup_code else lookup_code)
                 ).first()
 
                 if existing:
@@ -1157,32 +1170,40 @@ def rfq_bulk_upload(request):
         except Exception as e:
             errors.append(f"{f.name}: {e}")
 
-    # AJAX request — return JSON so the frontend can show duplicate resolution UI
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'ok': True,
-            'added': total_added,
-            'sup_created': sup_created,
-            'sup_updated': sup_updated,
-            'identical_skipped': identical_skipped,
-            'duplicates': duplicates,
-            'errors': errors,
-        })
+     # AJAX request — return JSON so the frontend can show duplicate resolution UI
+     if is_ajax:
+         return JsonResponse({
+             'ok': True,
+             'added': total_added,
+             'sup_created': sup_created,
+             'sup_updated': sup_updated,
+             'identical_skipped': identical_skipped,
+             'duplicates': duplicates,
+             'errors': errors,
+         })
 
-    # Fallback plain POST (no AJAX) — original redirect behaviour
-    parts = []
-    if total_added:
-        parts.append(f'{total_added} RFQ row(s) added')
-    if sup_created:
-        parts.append(f'{sup_created} supplier(s) created')
-    if sup_updated:
-        parts.append(f'{sup_updated} supplier(s) updated')
-    if parts:
-        messages.success(request, f'Upload complete — {", ".join(parts)}.')
-    if errors:
-        for err in errors:
-            messages.error(request, err)
-    return redirect('rfq_list')
+     # Fallback plain POST (no AJAX) — original redirect behaviour
+     parts = []
+     if total_added:
+         parts.append(f'{total_added} RFQ row(s) added')
+     if sup_created:
+         parts.append(f'{sup_created} supplier(s) created')
+     if sup_updated:
+         parts.append(f'{sup_updated} supplier(s) updated')
+     if parts:
+         messages.success(request, f'Upload complete — {", ".join(parts)}.')
+     if errors:
+         for err in errors:
+             messages.error(request, err)
+     return redirect('rfq_list')
+
+    except Exception as exc:
+        import traceback
+        detail = traceback.format_exc()
+        if is_ajax:
+            return JsonResponse({'ok': False, 'error': str(exc), 'detail': detail}, status=500)
+        messages.error(request, f'Upload error: {exc}')
+        return redirect('rfq_list')
 
 
 @login_required
