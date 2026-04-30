@@ -1260,19 +1260,31 @@ def rfq_clear_all(request):
 @login_required
 @editor_required
 def rfq_bulk_status(request):
-    """Update status on a list of RFQ entries via AJAX JSON POST."""
+    """Update status, PIC, and/or contact email on a list of RFQ entries via AJAX JSON POST."""
     if request.method != 'POST':
         return JsonResponse({'ok': False}, status=405)
     try:
-        data   = json.loads(request.body)
-        pks    = [int(p) for p in data.get('pks', [])]
-        status = (data.get('status') or '').strip()
+        data = json.loads(request.body)
+        pks  = [int(p) for p in data.get('pks', [])]
     except (json.JSONDecodeError, ValueError, AttributeError):
         return JsonResponse({'ok': False, 'error': 'Invalid request.'}, status=400)
     if not pks:
         return JsonResponse({'ok': False, 'error': 'No rows selected.'}, status=400)
-    rfq_sent = 'Yes' if status else 'No'
-    updated = RFQEntry.objects.filter(pk__in=pks).update(status=status, rfq_sent=rfq_sent)
+
+    update_kwargs = {}
+    if 'status' in data:
+        status = (data['status'] or '').strip()
+        update_kwargs['status'] = status
+        update_kwargs['rfq_sent'] = 'Yes' if status else 'No'
+    if 'pic' in data:
+        update_kwargs['pic'] = (data['pic'] or '').strip()
+    if 'contact_email' in data:
+        update_kwargs['contact_email'] = (data['contact_email'] or '').strip()
+
+    if not update_kwargs:
+        return JsonResponse({'ok': False, 'error': 'Nothing to update.'}, status=400)
+
+    updated = RFQEntry.objects.filter(pk__in=pks).update(**update_kwargs)
     return JsonResponse({'ok': True, 'updated': updated})
 
 

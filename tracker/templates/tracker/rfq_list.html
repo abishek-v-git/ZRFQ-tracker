@@ -290,8 +290,8 @@
     <!-- <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-subtract me-1"></i>Remove Duplicates
-    </button> -->
-    <!-- <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
+    </button>
+    <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
     </button> -->
@@ -404,13 +404,19 @@
     <span style="opacity:0.5; font-size:12px;">|</span>
     <label style="font-size:13px; margin:0; white-space:nowrap;">Set Status:</label>
     <select class="bulk-status-select" id="bulkStatusSel">
-        <option value="">— No Status —</option>
+        <option value="">— No change —</option>
         <option value="No Response Yet">No Response Yet</option>
         <option value="Partially Data Received">Partially Data Received</option>
         <option value="Completed">Completed</option>
         <option value="Others">Others…</option>
     </select>
     <input type="text" class="bulk-others-input" id="bulkOthersInput" placeholder="Type status…">
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <label style="font-size:13px; margin:0; white-space:nowrap;">Set PIC:</label>
+    <input type="text" class="bulk-others-input" id="bulkPicInput" placeholder="PIC name…" style="display:inline-block; min-width:140px;">
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <label style="font-size:13px; margin:0; white-space:nowrap;">Set Contact Email:</label>
+    <input type="text" class="bulk-others-input" id="bulkEmailInput" placeholder="email@example.com" style="display:inline-block; min-width:180px;">
     <button class="btn btn-sm btn-light px-3" id="bulkApplyBtn">
         <i class="bi bi-check-lg me-1"></i>Apply
     </button>
@@ -888,10 +894,17 @@ function submitBulkUpload() {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         body: fd,
     })
-    .then(r => r.json())
-    .then(data => {
+    .then(r => r.json().then(d => ({ httpOk: r.ok, status: r.status, data: d })))
+    .then(({ httpOk, status, data }) => {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-upload me-1"></i>Upload &amp; Import';
+
+        if (!httpOk || !data.ok) {
+            const msg = data.error || `Server error (HTTP ${status})`;
+            msgEl.innerHTML = `<div class="alert alert-danger py-1 mb-0" style="font-size:12px;">${esc(msg)}</div>`;
+            return;
+        }
+
         input.value = '';
         document.getElementById('filePreview').classList.add('d-none');
 
@@ -915,10 +928,10 @@ function submitBulkUpload() {
             updateDashboard();
         }
     })
-    .catch(() => {
+    .catch(err => {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-upload me-1"></i>Upload &amp; Import';
-        msgEl.innerHTML = '<div class="alert alert-danger py-1 mb-0" style="font-size:12px;">Upload failed. Please try again.</div>';
+        msgEl.innerHTML = `<div class="alert alert-danger py-1 mb-0" style="font-size:12px;">Upload failed: ${esc(err.message || 'network error')}. Check server logs.</div>`;
     });
 }
 
@@ -1539,9 +1552,22 @@ if (_bulkStatusSel) _bulkStatusSel.addEventListener('change', function() {
 const _bulkApplyBtn = document.getElementById('bulkApplyBtn');
 if (_bulkApplyBtn) _bulkApplyBtn.addEventListener('click', function() {
     if (!selectedPks.size) return;
-    const selVal = document.getElementById('bulkStatusSel').value;
+    const selVal   = document.getElementById('bulkStatusSel').value;
     const otherVal = document.getElementById('bulkOthersInput').value.trim();
-    const status = selVal === 'Others' ? otherVal : selVal;
+    const status   = selVal === 'Others' ? otherVal : selVal;
+    const pic      = document.getElementById('bulkPicInput').value.trim();
+    const email    = document.getElementById('bulkEmailInput').value.trim();
+
+    // Build payload — only include fields the user actually filled in
+    const payload = { pks: Array.from(selectedPks) };
+    if (selVal !== '') payload.status = status;   // status dropdown changed from "no change"
+    if (pic)           payload.pic = pic;
+    if (email)         payload.contact_email = email;
+
+    if (Object.keys(payload).length === 1) {
+        showToast('Enter at least one field to update', false);
+        return;
+    }
 
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
@@ -1549,32 +1575,41 @@ if (_bulkApplyBtn) _bulkApplyBtn.addEventListener('click', function() {
     fetch('{% url "rfq_bulk_status" %}', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-        body: JSON.stringify({ pks: Array.from(selectedPks), status: status }),
+        body: JSON.stringify(payload),
     })
     .then(r => r.json())
     .then(data => {
         this.disabled = false;
         this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Apply';
         if (data.ok) {
-            // Update visible rows in-place
             selectedPks.forEach(pk => {
                 const row = document.querySelector(`tr[data-pk="${pk}"]`);
                 if (!row) return;
                 const c = row.cells;
-                const FIXED = ['Completed', 'Partially Data Received', 'No Response Yet'];
-                const statusCell = c[46];
-                const container = statusCell.querySelector('.status-badge-container');
-                const sel       = statusCell.querySelector('.status-sel-badge');
-                const inp       = statusCell.querySelector('.status-txt');
-                if (container) container.className = 'status-badge-container ' + getStatusClass(status);
-                if (sel) sel.value = FIXED.includes(status) || !status ? status : 'Others';
-                if (inp) { inp.value = (!FIXED.includes(status) && status) ? status : ''; inp.style.display = (!FIXED.includes(status) && status) ? 'block' : 'none'; }
+                if ('status' in payload) {
+                    const FIXED = ['Completed', 'Partially Data Received', 'No Response Yet'];
+                    const statusCell = c[46];
+                    const container = statusCell.querySelector('.status-badge-container');
+                    const sel       = statusCell.querySelector('.status-sel-badge');
+                    const inp       = statusCell.querySelector('.status-txt');
+                    if (container) container.className = 'status-badge-container ' + getStatusClass(status);
+                    if (sel) sel.value = FIXED.includes(status) || !status ? status : 'Others';
+                    if (inp) { inp.value = (!FIXED.includes(status) && status) ? status : ''; inp.style.display = (!FIXED.includes(status) && status) ? 'block' : 'none'; }
+                }
+                if ('pic' in payload) {
+                    c[10].textContent = pic || '—';
+                }
+                if ('contact_email' in payload) {
+                    c[11].innerHTML = email ? '<a href="mailto:' + escHtml(email) + '">' + escHtml(email) + '</a>' : '—';
+                }
             });
             showToast(data.updated + ' row(s) updated', true);
             clearSelection();
             document.getElementById('bulkStatusSel').value = '';
             document.getElementById('bulkOthersInput').style.display = 'none';
             document.getElementById('bulkOthersInput').value = '';
+            document.getElementById('bulkPicInput').value = '';
+            document.getElementById('bulkEmailInput').value = '';
         } else {
             showToast(data.error || 'Update failed', false);
         }
