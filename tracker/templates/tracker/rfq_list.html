@@ -219,7 +219,32 @@
 
 </style>
 
+<div id="stats-data" hidden
+    data-sup="{{ stats.total_suppliers }}"
+    data-sup-sent="{{ stats.sent }}"
+    data-sup-not-sent="{{ stats.not_sent }}"
+    data-sup-partial="{{ stats.partial }}"
+    data-sup-completed="{{ stats.completed }}"
+    data-sup-no-resp="{{ stats.no_resp }}"
+    data-sup-not-valid="{{ stats.not_valid }}"
+    data-sup-fully="{{ stats.fully_completed_suppliers }}"
+    data-row-sent="{{ stats.row_sent }}"
+    data-row-not-sent="{{ stats.row_not_sent }}"
+    data-row-partial="{{ stats.row_partial }}"
+    data-row-completed="{{ stats.row_completed }}"
+    data-row-no-resp="{{ stats.row_no_resp }}"
+    data-row-not-valid="{{ stats.row_not_valid }}"
+    data-row-fully="{{ stats.row_fully_completed_suppliers }}">
+</div>
+
 <!-- ── Dashboard Cards ── -->
+<div class="d-flex align-items-center justify-content-end mb-1" style="gap:6px;">
+    <span style="font-size:11px; color:#888;">Count by:</span>
+    <div class="btn-group btn-group-sm" id="statsToggle" role="group">
+        <button type="button" class="btn btn-primary active" data-mode="supplier">Supplier</button>
+        <button type="button" class="btn btn-outline-secondary" data-mode="row">Row</button>
+    </div>
+</div>
 <div class="dashboard-cards mb-3">
     <div class="dash-card">
         <div class="dash-bar" style="background:#003366;"></div>
@@ -287,14 +312,14 @@
         <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
     </a>
     {% if not is_viewer %}
-    <!-- <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
+    <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-subtract me-1"></i>Remove Duplicates
     </button>
     <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
-    </button> -->
+    </button>
     {% endif %}
     <a href="{% url 'rfq_download_template' %}" class="btn btn-sm btn-outline-info {% if is_viewer %}ms-auto{% endif %}">
         <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Template
@@ -344,48 +369,49 @@
                     <th class="sortable" data-col="9">PIC</th>
                     <th class="sortable" data-col="10">Contact Email</th>
                     <th class="sortable" data-col="11">Contact Secondary Email</th>
-                    <th class="sortable" data-col="12">Lead Time (days)</th>
-                    <th class="sortable" data-col="13">Ship Lead Time (days)</th>
-                    <th class="sortable" data-col="14">UOM</th>
-                    <th class="sortable" data-col="15">COO</th>
-                    <th class="sortable" data-col="16">Currency</th>
-                    <th class="sortable" data-col="17">Unit Price 1</th>
-                    <th class="sortable" data-col="18">MOQ-1</th>
-                    <th class="sortable" data-col="19">Unit Price 2</th>
-                    <th class="sortable" data-col="20">MOQ-2</th>
-                    <th class="sortable" data-col="21">Unit Price 3</th>
-                    <th class="sortable" data-col="22">MOQ-3</th>
-                    <th class="sortable" data-col="23">Lot Size</th>
-                    <th class="sortable" data-col="24">HTS Code</th>
-                    <th class="sortable" data-col="25">ECCN/EAR99</th>
-                    <th class="sortable" data-col="26">Manufacture Part Number</th>
-                    <th class="sortable" data-col="27">Manufacturer Name</th>
-                    <th class="sortable" data-col="28">Manufacturer Address</th>
-                    <th class="sortable" data-col="29">Item Weight (kg)</th>
-                    <th class="sortable" data-col="30">Volume Weight (kg)</th>
-                    <th class="sortable" data-col="31">Russian Steel Confirmation</th>
-                    <th class="sortable" data-col="32">Hazmat (Y/N)</th>
-                    <th class="sortable" data-col="33">UN# · SDS/MSDS</th>
-                    <th class="sortable" data-col="34">Product Regulation</th>
-                    <th class="sortable" data-col="35">EOL Status</th>
-                    <th class="sortable" data-col="36">Alternative Part(s)</th>
-                    <th class="sortable" data-col="37">Alternative Part No</th>
-                    <th class="sortable" data-col="38">Mfg Address + Postal (CN Only)</th>
-                    <th class="sortable" data-col="39">UFLPA Compliance (CN Only)</th>
-                    <th class="sortable" data-col="40">UFLPA Start Date</th>
-                    <th class="sortable" data-col="41">UFLPA Expiry Date</th>
-                    <th class="sortable" data-col="42">USMCA Certificate (CA/MX Only)</th>
-                    <th class="sortable" data-col="43">USMCA Start Date</th>
-                    <th class="sortable" data-col="44">USMCA Expiry Date</th>
-                    <th class="sortable" data-col="45">RFQ Sent</th>
-                    <th class="sortable" data-col="46">Status</th>
-                    <th class="sortable" data-col="47">Comments</th>
+                    <th class="sortable" data-col="12">PR</th>
+                    <th class="sortable" data-col="13">Lead Time (days)</th>
+                    <th class="sortable" data-col="14">Ship Lead Time (days)</th>
+                    <th class="sortable" data-col="15">UOM</th>
+                    <th class="sortable" data-col="16">COO</th>
+                    <th class="sortable" data-col="17">Currency</th>
+                    <th class="sortable" data-col="18">Unit Price 1</th>
+                    <th class="sortable" data-col="19">MOQ-1</th>
+                    <th class="sortable" data-col="20">Unit Price 2</th>
+                    <th class="sortable" data-col="21">MOQ-2</th>
+                    <th class="sortable" data-col="22">Unit Price 3</th>
+                    <th class="sortable" data-col="23">MOQ-3</th>
+                    <th class="sortable" data-col="24">Lot Size</th>
+                    <th class="sortable" data-col="25">HTS Code</th>
+                    <th class="sortable" data-col="26">ECCN/EAR99</th>
+                    <th class="sortable" data-col="27">Manufacture Part Number</th>
+                    <th class="sortable" data-col="28">Manufacturer Name</th>
+                    <th class="sortable" data-col="29">Manufacturer Address</th>
+                    <th class="sortable" data-col="30">Item Weight (kg)</th>
+                    <th class="sortable" data-col="31">Volume Weight (kg)</th>
+                    <th class="sortable" data-col="32">Russian Steel Confirmation</th>
+                    <th class="sortable" data-col="33">Hazmat (Y/N)</th>
+                    <th class="sortable" data-col="34">UN# · SDS/MSDS</th>
+                    <th class="sortable" data-col="35">Product Regulation</th>
+                    <th class="sortable" data-col="36">EOL Status</th>
+                    <th class="sortable" data-col="37">Alternative Part(s)</th>
+                    <th class="sortable" data-col="38">Alternative Part No</th>
+                    <th class="sortable" data-col="39">Mfg Address + Postal (CN Only)</th>
+                    <th class="sortable" data-col="40">UFLPA Compliance (CN Only)</th>
+                    <th class="sortable" data-col="41">UFLPA Start Date</th>
+                    <th class="sortable" data-col="42">UFLPA Expiry Date</th>
+                    <th class="sortable" data-col="43">USMCA Certificate (CA/MX Only)</th>
+                    <th class="sortable" data-col="44">USMCA Start Date</th>
+                    <th class="sortable" data-col="45">USMCA Expiry Date</th>
+                    <th class="sortable" data-col="46">RFQ Sent</th>
+                    <th class="sortable" data-col="47">Status</th>
+                    <th class="sortable" data-col="48">Comments</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="rfqTbody">
                 <tr id="loadingRow">
-                    <td colspan="49" class="text-center py-4">
+                    <td colspan="50" class="text-center py-4">
                         <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…
                     </td>
                 </tr>
@@ -410,13 +436,19 @@
         <option value="Completed">Completed</option>
         <option value="Others">Others…</option>
     </select>
-    <input type="text" class="bulk-others-input" id="bulkOthersInput" placeholder="Type status…">
+    <input type="text" class="bulk-others-input" id="bulkOthersInput" placeholder="Type status…" style="display:none;">
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <label style="font-size:13px; margin:0; white-space:nowrap;">Set PR:</label>
+    <input type="text" class="bulk-others-input" id="bulkPrInput" placeholder="PR number…" style="display:inline-block; min-width:130px;">
     <span style="opacity:0.5; font-size:12px;">|</span>
     <label style="font-size:13px; margin:0; white-space:nowrap;">Set PIC:</label>
     <input type="text" class="bulk-others-input" id="bulkPicInput" placeholder="PIC name…" style="display:inline-block; min-width:140px;">
     <span style="opacity:0.5; font-size:12px;">|</span>
     <label style="font-size:13px; margin:0; white-space:nowrap;">Set Contact Email:</label>
     <input type="text" class="bulk-others-input" id="bulkEmailInput" placeholder="email@example.com" style="display:inline-block; min-width:180px;">
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <label style="font-size:13px; margin:0; white-space:nowrap;">Set Comments:</label>
+    <input type="text" class="bulk-others-input" id="bulkCommentsInput" placeholder="Add comment…" style="display:inline-block; min-width:200px;">
     <button class="btn btn-sm btn-light px-3" id="bulkApplyBtn">
         <i class="bi bi-check-lg me-1"></i>Apply
     </button>
@@ -636,6 +668,7 @@
                         <div class="col-md-2"><label class="form-label">PIC</label>{{ edit_form.pic }}</div>
                         <div class="col-md-2"><label class="form-label">Contact Email</label>{{ edit_form.contact_email }}</div>
                         <div class="col-md-3"><label class="form-label">Contact Secondary Email</label>{{ edit_form.contact_secondary_email }}</div>
+                        <div class="col-md-2"><label class="form-label">PR</label>{{ edit_form.pr }}</div>
 
                         <div class="col-12 mt-1"><div class="section-heading">Part</div></div>
                         <div class="col-md-2"><label class="form-label">Part No *</label>{{ edit_form.part_no }}</div>
@@ -1208,18 +1241,64 @@ function getStatusClass(status) {
     return 'status-others';
 }
 
+// Both stat datasets — read from data attributes to avoid Django-template-in-JS linter errors
+(function() {
+    const el = document.getElementById('stats-data');
+    const d  = el ? el.dataset : {};
+    window._statsSupplier = {
+        total_suppliers: +d.sup, sent: +d.supSent, not_sent: +d.supNotSent,
+        partial: +d.supPartial, completed: +d.supCompleted, no_resp: +d.supNoResp,
+        not_valid: +d.supNotValid, fully_completed_suppliers: +d.supFully,
+    };
+    window._statsRow = {
+        total_suppliers: +d.sup, sent: +d.rowSent, not_sent: +d.rowNotSent,
+        partial: +d.rowPartial, completed: +d.rowCompleted, no_resp: +d.rowNoResp,
+        not_valid: +d.rowNotValid, fully_completed_suppliers: +d.rowFully,
+    };
+})();
+let _statsMode = 'supplier';
+
+function applyStatsToCards(d) {
+    document.getElementById('stat-total-suppliers').textContent = d.total_suppliers;
+    document.getElementById('stat-sent').textContent            = d.sent;
+    document.getElementById('stat-not-sent').textContent        = d.not_sent;
+    document.getElementById('stat-partial').textContent         = d.partial;
+    document.getElementById('stat-completed').textContent       = d.completed;
+    document.getElementById('stat-not-valid').textContent       = d.not_valid;
+    document.getElementById('stat-no-resp').textContent         = d.no_resp;
+    document.getElementById('stat-fully-completed').textContent = d.fully_completed_suppliers;
+}
+
+document.querySelectorAll('#statsToggle button').forEach(btn => {
+    btn.addEventListener('click', function() {
+        _statsMode = this.dataset.mode;
+        document.querySelectorAll('#statsToggle button').forEach(b => {
+            b.classList.toggle('active', b === this);
+            b.classList.toggle('btn-primary', b === this);
+            b.classList.toggle('btn-outline-secondary', b !== this);
+        });
+        applyStatsToCards(_statsMode === 'supplier' ? _statsSupplier : _statsRow);
+    });
+});
+
 function updateDashboard() {
     fetch('/stats/')
         .then(r => r.json())
         .then(d => {
-            document.getElementById('stat-total-suppliers').textContent = d.total_suppliers;
-            document.getElementById('stat-sent').textContent = d.sent;
-            document.getElementById('stat-not-sent').textContent = d.not_sent;
-            document.getElementById('stat-partial').textContent = d.partial;
-            document.getElementById('stat-completed').textContent = d.completed;
-            document.getElementById('stat-not-valid').textContent = d.not_valid;
-            document.getElementById('stat-no-resp').textContent = d.no_resp;
-            document.getElementById('stat-fully-completed').textContent = d.fully_completed_suppliers;
+            // Refresh both local caches then re-apply current mode
+            Object.assign(_statsSupplier, {
+                total_suppliers: d.total_suppliers, sent: d.sent,
+                not_sent: d.not_sent, partial: d.partial, completed: d.completed,
+                no_resp: d.no_resp, not_valid: d.not_valid,
+                fully_completed_suppliers: d.fully_completed_suppliers,
+            });
+            Object.assign(_statsRow, {
+                total_suppliers: d.total_suppliers, sent: d.row_sent,
+                not_sent: d.row_not_sent, partial: d.row_partial, completed: d.row_completed,
+                no_resp: d.row_no_resp, not_valid: d.row_not_valid,
+                fully_completed_suppliers: d.row_fully_completed_suppliers,
+            });
+            applyStatsToCards(_statsMode === 'supplier' ? _statsSupplier : _statsRow);
         })
         .catch(() => {});
 }
@@ -1319,6 +1398,7 @@ function populateEditForm(e) {
     set('id_edit-pic',                     e.pic);
     set('id_edit-contact_email',           e.contact_email);
     set('id_edit-contact_secondary_email', e.contact_secondary_email);
+    set('id_edit-pr',                      e.pr);
     set('id_edit-lead_time_days',          e.lead_time_days);
     set('id_edit-ship_lead_time_days',     e.ship_lead_time_days);
     set('id_edit-quote_uom',               e.quote_uom);
@@ -1399,45 +1479,46 @@ function updateRowFromEntry(row, e) {
     txt(10, e.pic);
     eml(11, e.contact_email);
     eml(12, e.contact_secondary_email);
-    txt(13, e.lead_time_days);
-    txt(14, e.ship_lead_time_days);
-    txt(15, e.quote_uom);
-    txt(16, e.coo);
-    txt(17, e.quote_currency);
-    txt(18, fmtPrice(e.unit_price_1));
-    txt(19, fmtQty(e.moq_1));
-    txt(20, fmtPrice(e.unit_price_2));
-    txt(21, fmtQty(e.moq_2));
-    txt(22, fmtPrice(e.unit_price_3));
-    txt(23, fmtQty(e.moq_3));
-    txt(24, fmtQty(e.lot_size));
-    txt(25, e.hts_code);
-    txt(26, e.eccn_ear99);
-    txt(27, e.manufacture_part_number);
-    txt(28, e.manufacturer_name);
-    txt(29, e.manufacturer_address);
-    txt(30, fmtWeight(e.item_weight_kg));
-    txt(31, fmtWeight(e.volume_weight_kg));
-    ddrop(32, 'russian_steel_confirmation');
-    ddrop(33, 'hazmat');
-    ddrop(34, 'un_sds_msds');
-    ddrop(35, 'product_regulation');
-    ddrop(36, 'eol_status');
-    txt(37, e.alternative_parts);
-    txt(38, e.alternative_part_no);
-    txt(39, e.mfg_address_postal_cn);
-    ddrop(40, 'uflpa_compliance');
-    c[41].textContent = fmtDate(e.uflpa_start_date);
-    c[42].textContent = fmtDate(e.uflpa_expiry_date);
-    ddrop(43, 'usmca_certificate');
-    c[44].textContent = fmtDate(e.usmca_start_date);
-    c[45].textContent = fmtDate(e.usmca_expiry_date);
-    // col 46: Status
+    txt(13, e.pr);
+    txt(14, e.lead_time_days);
+    txt(15, e.ship_lead_time_days);
+    txt(16, e.quote_uom);
+    txt(17, e.coo);
+    txt(18, e.quote_currency);
+    txt(19, fmtPrice(e.unit_price_1));
+    txt(20, fmtQty(e.moq_1));
+    txt(21, fmtPrice(e.unit_price_2));
+    txt(22, fmtQty(e.moq_2));
+    txt(23, fmtPrice(e.unit_price_3));
+    txt(24, fmtQty(e.moq_3));
+    txt(25, fmtQty(e.lot_size));
+    txt(26, e.hts_code);
+    txt(27, e.eccn_ear99);
+    txt(28, e.manufacture_part_number);
+    txt(29, e.manufacturer_name);
+    txt(30, e.manufacturer_address);
+    txt(31, fmtWeight(e.item_weight_kg));
+    txt(32, fmtWeight(e.volume_weight_kg));
+    ddrop(33, 'russian_steel_confirmation');
+    ddrop(34, 'hazmat');
+    ddrop(35, 'un_sds_msds');
+    ddrop(36, 'product_regulation');
+    ddrop(37, 'eol_status');
+    txt(38, e.alternative_parts);
+    txt(39, e.alternative_part_no);
+    txt(40, e.mfg_address_postal_cn);
+    ddrop(41, 'uflpa_compliance');
+    c[42].textContent = fmtDate(e.uflpa_start_date);
+    c[43].textContent = fmtDate(e.uflpa_expiry_date);
+    ddrop(44, 'usmca_certificate');
+    c[45].textContent = fmtDate(e.usmca_start_date);
+    c[46].textContent = fmtDate(e.usmca_expiry_date);
+    // col 47: Status
     (function() {
         const v = e.status || '';
-        const sel = c[46].querySelector('.status-sel-badge');
-        const inp = c[46].querySelector('.status-txt');
-        const container = c[46].querySelector('.status-badge-container');
+        const sel = c[47].querySelector('.status-sel-badge');
+        const inp = c[47].querySelector('.status-txt');
+        const container = c[47].querySelector('.status-badge-container');
         const FIXED = ['Completed', 'Partially Data Received', 'No Response Yet'];
         if (sel) sel.value = (FIXED.includes(v) || !v) ? v : 'Others';
         if (inp) {
@@ -1447,9 +1528,9 @@ function updateRowFromEntry(row, e) {
         }
         if (container) container.className = 'status-badge-container ' + getStatusClass(v);
     })();
-    // col 47: Comments
-    if (c[47].querySelector('.comments-txt')) {
-        c[47].querySelector('.comments-txt').value = e.comments || '';
+    // col 48: Comments
+    if (c[48].querySelector('.comments-txt')) {
+        c[48].querySelector('.comments-txt').value = e.comments || '';
     }
 }
 
@@ -1545,7 +1626,7 @@ if (_selectAll) _selectAll.addEventListener('change', function() {
 const _bulkStatusSel = document.getElementById('bulkStatusSel');
 if (_bulkStatusSel) _bulkStatusSel.addEventListener('change', function() {
     const inp = document.getElementById('bulkOthersInput');
-    inp.style.display = this.value === 'Others' ? '' : 'none';
+    inp.style.display = this.value === 'Others' ? 'inline-block' : 'none';
     if (this.value === 'Others') inp.focus();
 });
 
@@ -1555,14 +1636,18 @@ if (_bulkApplyBtn) _bulkApplyBtn.addEventListener('click', function() {
     const selVal   = document.getElementById('bulkStatusSel').value;
     const otherVal = document.getElementById('bulkOthersInput').value.trim();
     const status   = selVal === 'Others' ? otherVal : selVal;
+    const pr       = document.getElementById('bulkPrInput').value.trim();
     const pic      = document.getElementById('bulkPicInput').value.trim();
     const email    = document.getElementById('bulkEmailInput').value.trim();
+    const comments = document.getElementById('bulkCommentsInput').value.trim();
 
     // Build payload — only include fields the user actually filled in
     const payload = { pks: Array.from(selectedPks) };
-    if (selVal !== '') payload.status = status;   // status dropdown changed from "no change"
-    if (pic)           payload.pic = pic;
-    if (email)         payload.contact_email = email;
+    if (status)   payload.status = status;   // non-empty final value (skips "no change" + empty Others)
+    if (pr)       payload.pr = pr;
+    if (pic)      payload.pic = pic;
+    if (email)    payload.contact_email = email;
+    if (comments) payload.comments = comments;
 
     if (Object.keys(payload).length === 1) {
         showToast('Enter at least one field to update', false);
@@ -1588,7 +1673,7 @@ if (_bulkApplyBtn) _bulkApplyBtn.addEventListener('click', function() {
                 const c = row.cells;
                 if ('status' in payload) {
                     const FIXED = ['Completed', 'Partially Data Received', 'No Response Yet'];
-                    const statusCell = c[46];
+                    const statusCell = c[47];
                     const container = statusCell.querySelector('.status-badge-container');
                     const sel       = statusCell.querySelector('.status-sel-badge');
                     const inp       = statusCell.querySelector('.status-txt');
@@ -1602,14 +1687,23 @@ if (_bulkApplyBtn) _bulkApplyBtn.addEventListener('click', function() {
                 if ('contact_email' in payload) {
                     c[11].innerHTML = email ? '<a href="mailto:' + escHtml(email) + '">' + escHtml(email) + '</a>' : '—';
                 }
+                if ('pr' in payload) {
+                    c[13].textContent = pr || '—';
+                }
+                if ('comments' in payload) {
+                    const ta = c[48].querySelector('.comments-txt');
+                    if (ta) ta.value = comments;
+                }
             });
             showToast(data.updated + ' row(s) updated', true);
             clearSelection();
             document.getElementById('bulkStatusSel').value = '';
             document.getElementById('bulkOthersInput').style.display = 'none';
             document.getElementById('bulkOthersInput').value = '';
+            document.getElementById('bulkPrInput').value = '';
             document.getElementById('bulkPicInput').value = '';
             document.getElementById('bulkEmailInput').value = '';
+            document.getElementById('bulkCommentsInput').value = '';
         } else {
             showToast(data.error || 'Update failed', false);
         }
@@ -1734,6 +1828,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.pic))}</td>
             <td>${emailLink(e.contact_email)}</td>
             <td>${emailLink(e.contact_secondary_email)}</td>
+            <td>${val(esc(e.pr))}</td>
             <td>${val(esc(e.lead_time_days))}</td>
             <td>${val(esc(e.ship_lead_time_days))}</td>
             <td>${val(esc(e.quote_uom))}</td>
@@ -1829,6 +1924,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.pic))}</td>
             <td>${emailLink(e.contact_email)}</td>
             <td>${emailLink(e.contact_secondary_email)}</td>
+            <td>${val(esc(e.pr))}</td>
             <td>${val(esc(e.lead_time_days))}</td>
             <td>${val(esc(e.ship_lead_time_days))}</td>
             <td>${val(esc(e.quote_uom))}</td>

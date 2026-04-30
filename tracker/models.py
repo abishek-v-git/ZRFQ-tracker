@@ -58,6 +58,7 @@ class RFQEntry(models.Model):
     pic = models.CharField(max_length=255, blank=True, verbose_name='PIC')
     contact_email = models.CharField(max_length=255, blank=True, verbose_name='Contact Email')
     contact_secondary_email = models.CharField(max_length=255, blank=True, verbose_name='Contact Secondary Email')
+    pr = models.CharField(max_length=200, blank=True, default='', verbose_name='PR')
 
     # ── Lead Times ────────────────────────────────────────────────────────────
     lead_time_days = models.IntegerField(null=True, blank=True, verbose_name='Lead Time (days)')

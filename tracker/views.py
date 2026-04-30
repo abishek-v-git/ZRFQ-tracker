@@ -237,6 +237,7 @@ def _entry_to_dict(entry):
         'pic': entry.pic or '',
         'contact_email': entry.contact_email or '',
         'contact_secondary_email': entry.contact_secondary_email or '',
+        'pr': entry.pr or '',
         'lead_time_days': fn(entry.lead_time_days),
         'ship_lead_time_days': fn(entry.ship_lead_time_days),
         'quote_uom': entry.quote_uom or '',
@@ -278,26 +279,64 @@ def _entry_to_dict(entry):
 
 def _compute_stats():
     from django.db.models import Count, Q, F
-    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
-    fully_completed_suppliers = (
+
+    # Aggregate per unique supplier_code
+    per_supplier = (
         RFQEntry.objects
         .values('supplier_code')
         .annotate(
             total=Count('pk'),
+            sent_count=Count('pk', filter=Q(rfq_sent='Yes')),
             completed_count=Count('pk', filter=Q(status='Completed')),
+            partial_count=Count('pk', filter=Q(status='Partially Data Received')),
+            custom_count=Count('pk', filter=(
+                ~Q(status='') &
+                ~Q(status__in=['Completed', 'Partially Data Received', 'No Response Yet'])
+            )),
         )
-        .filter(total=F('completed_count'))
-        .count()
     )
+
+    total_suppliers = per_supplier.count()
+
+    # Sent = at least one entry with rfq_sent='Yes'
+    sent_qs   = per_supplier.filter(sent_count__gt=0)
+    not_sent  = per_supplier.filter(sent_count=0).count()
+    sent      = sent_qs.count()
+
+    # Status breakdown — mutually exclusive, priority top-to-bottom
+    fully_completed   = sent_qs.filter(total=F('completed_count')).count()
+    response_received = sent_qs.filter(completed_count__gt=0).exclude(total=F('completed_count')).count()
+    partial           = sent_qs.filter(partial_count__gt=0, completed_count=0).count()
+    not_valid         = sent_qs.filter(custom_count__gt=0, completed_count=0, partial_count=0).count()
+    no_resp           = sent_qs.filter(completed_count=0, partial_count=0, custom_count=0).count()
+
+    # Row-based counts (legacy view)
+    KNOWN = ['Completed', 'Partially Data Received', 'No Response Yet']
+    row_sent      = RFQEntry.objects.exclude(status='').count()
+    row_not_sent  = RFQEntry.objects.filter(status='').count()
+    row_partial   = RFQEntry.objects.filter(status='Partially Data Received').count()
+    row_completed = RFQEntry.objects.filter(status='Completed').count()
+    row_no_resp   = RFQEntry.objects.filter(status='No Response Yet').count()
+    row_not_valid = RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count()
+
     return {
-        'total_suppliers':         RFQEntry.objects.values('supplier_code').distinct().count(),
-        'sent':                    RFQEntry.objects.exclude(status='').count(),
-        'not_sent':                RFQEntry.objects.filter(status='').count(),
-        'partial':                 RFQEntry.objects.filter(status='Partially Data Received').count(),
-        'completed':               RFQEntry.objects.filter(status='Completed').count(),
-        'no_resp':                 RFQEntry.objects.filter(status='No Response Yet').count(),
-        'not_valid':               RFQEntry.objects.exclude(status='').exclude(status__in=KNOWN).count(),
-        'fully_completed_suppliers': fully_completed_suppliers,
+        # Supplier-based (default)
+        'total_suppliers':           total_suppliers,
+        'sent':                      sent,
+        'not_sent':                  not_sent,
+        'partial':                   partial,
+        'completed':                 response_received,
+        'no_resp':                   no_resp,
+        'not_valid':                 not_valid,
+        'fully_completed_suppliers': fully_completed,
+        # Row-based (legacy)
+        'row_sent':                  row_sent,
+        'row_not_sent':              row_not_sent,
+        'row_partial':               row_partial,
+        'row_completed':             row_completed,
+        'row_no_resp':               row_no_resp,
+        'row_not_valid':             row_not_valid,
+        'row_fully_completed_suppliers': fully_completed,  # always supplier-based
     }
 
 
@@ -379,18 +418,18 @@ def rfq_data(request):
         0: 'pk', 1: 'supplier_code', 2: 'supplier_name', 3: 'part_no',
         4: 'part_description', 5: 'order_qty', 6: 'uom', 7: 'unit_price',
         8: 'currency', 9: 'pic', 10: 'contact_email', 11: 'contact_secondary_email',
-        12: 'lead_time_days', 13: 'ship_lead_time_days', 14: 'quote_uom',
-        15: 'coo', 16: 'quote_currency', 17: 'unit_price_1', 18: 'moq_1',
-        19: 'unit_price_2', 20: 'moq_2', 21: 'unit_price_3', 22: 'moq_3',
-        23: 'lot_size', 24: 'hts_code', 25: 'eccn_ear99',
-        26: 'manufacture_part_number', 27: 'manufacturer_name',
-        28: 'manufacturer_address', 29: 'item_weight_kg', 30: 'volume_weight_kg',
-        31: 'russian_steel_confirmation', 32: 'hazmat', 33: 'un_sds_msds',
-        34: 'product_regulation', 35: 'eol_status', 36: 'alternative_parts',
-        37: 'alternative_part_no', 38: 'mfg_address_postal_cn',
-        39: 'uflpa_compliance', 40: 'uflpa_start_date', 41: 'uflpa_expiry_date',
-        42: 'usmca_certificate', 43: 'usmca_start_date', 44: 'usmca_expiry_date',
-        45: 'rfq_sent', 46: 'status', 47: 'comments',
+        12: 'pr', 13: 'lead_time_days', 14: 'ship_lead_time_days', 15: 'quote_uom',
+        16: 'coo', 17: 'quote_currency', 18: 'unit_price_1', 19: 'moq_1',
+        20: 'unit_price_2', 21: 'moq_2', 22: 'unit_price_3', 23: 'moq_3',
+        24: 'lot_size', 25: 'hts_code', 26: 'eccn_ear99',
+        27: 'manufacture_part_number', 28: 'manufacturer_name',
+        29: 'manufacturer_address', 30: 'item_weight_kg', 31: 'volume_weight_kg',
+        32: 'russian_steel_confirmation', 33: 'hazmat', 34: 'un_sds_msds',
+        35: 'product_regulation', 36: 'eol_status', 37: 'alternative_parts',
+        38: 'alternative_part_no', 39: 'mfg_address_postal_cn',
+        40: 'uflpa_compliance', 41: 'uflpa_start_date', 42: 'uflpa_expiry_date',
+        43: 'usmca_certificate', 44: 'usmca_start_date', 45: 'usmca_expiry_date',
+        46: 'rfq_sent', 47: 'status', 48: 'comments',
     }
 
     field = COL_FIELD.get(sort_col)
@@ -1280,6 +1319,10 @@ def rfq_bulk_status(request):
         update_kwargs['pic'] = (data['pic'] or '').strip()
     if 'contact_email' in data:
         update_kwargs['contact_email'] = (data['contact_email'] or '').strip()
+    if 'comments' in data:
+        update_kwargs['comments'] = (data['comments'] or '').strip()
+    if 'pr' in data:
+        update_kwargs['pr'] = (data['pr'] or '').strip()
 
     if not update_kwargs:
         return JsonResponse({'ok': False, 'error': 'Nothing to update.'}, status=400)

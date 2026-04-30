@@ -26,6 +26,7 @@ class RFQEntryForm(forms.ModelForm):
             'pic':                       forms.TextInput(attrs=_text()),
             'contact_email':             forms.TextInput(attrs=_text()),
             'contact_secondary_email':   forms.TextInput(attrs=_text()),
+            'pr':                        forms.TextInput(attrs=_text()),
             # Lead times
             'lead_time_days':            forms.NumberInput(attrs=_num()),
             'ship_lead_time_days':       forms.NumberInput(attrs=_num()),
