@@ -126,6 +126,9 @@
     /* Checkbox column */
     .col-check { width: 36px; min-width: 36px; text-align: center; }
 
+    /* Wrapping columns for long free-text content */
+    .col-wrap { white-space: normal !important; word-break: break-word; min-width: 180px; max-width: 300px; vertical-align: top; }
+
     /* Bulk action bar */
     #bulkBar {
         position: fixed;
@@ -284,14 +287,14 @@
         <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
     </a>
     {% if not is_viewer %}
-    <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
+    <!-- <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-subtract me-1"></i>Remove Duplicates
-    </button>
-    <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
+    </button> -->
+    <!-- <button class="btn btn-outline-danger btn-sm" id="clearAllBtn" data-bs-toggle="modal" data-bs-target="#clearAllModal"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
-    </button>
+    </button> -->
     {% endif %}
     <a href="{% url 'rfq_download_template' %}" class="btn btn-sm btn-outline-info {% if is_viewer %}ms-auto{% endif %}">
         <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Template
@@ -1359,7 +1362,7 @@ function updateRowFromEntry(row, e) {
     txt(2,  e.supplier_code);
     txt(3,  e.supplier_name);
     txt(4,  e.part_no);
-    trn(5,  e.part_description, 30);
+    txt(5,  e.part_description);
     txt(6,  e.order_qty);
     txt(7,  e.uom);
     txt(8,  e.unit_price);
@@ -1383,7 +1386,7 @@ function updateRowFromEntry(row, e) {
     txt(26, e.eccn_ear99);
     txt(27, e.manufacture_part_number);
     txt(28, e.manufacturer_name);
-    trn(29, e.manufacturer_address, 30);
+    txt(29, e.manufacturer_address);
     txt(30, e.item_weight_kg);
     txt(31, e.volume_weight_kg);
     ddrop(32, 'russian_steel_confirmation');
@@ -1391,9 +1394,9 @@ function updateRowFromEntry(row, e) {
     ddrop(34, 'un_sds_msds');
     ddrop(35, 'product_regulation');
     ddrop(36, 'eol_status');
-    trn(37, e.alternative_parts, 25);
+    txt(37, e.alternative_parts);
     txt(38, e.alternative_part_no);
-    trn(39, e.mfg_address_postal_cn, 25);
+    txt(39, e.mfg_address_postal_cn);
     ddrop(40, 'uflpa_compliance');
     c[41].textContent = fmtDate(e.uflpa_start_date);
     c[42].textContent = fmtDate(e.uflpa_expiry_date);
@@ -1669,7 +1672,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${esc(e.supplier_code)||'—'}</td>
             <td>${esc(e.supplier_name)||'—'}</td>
             <td>${esc(e.part_no)||'—'}</td>
-            <td title="${esc(e.part_description)}">${esc(trunc(e.part_description,30))}</td>
+            <td class="col-wrap">${esc(e.part_description)||'—'}</td>
             <td>${val(esc(e.order_qty))}</td>
             <td>${val(esc(e.uom))}</td>
             <td>${val(esc(e.unit_price))}</td>
@@ -1693,7 +1696,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.eccn_ear99))}</td>
             <td class="col-mfr-pn">${val(esc(e.manufacture_part_number))}</td>
             <td>${val(esc(e.manufacturer_name))}</td>
-            <td title="${esc(e.manufacturer_address)}">${esc(trunc(e.manufacturer_address,30))}</td>
+            <td class="col-wrap">${esc(e.manufacturer_address)||'—'}</td>
             <td>${val(esc(e.item_weight_kg))}</td>
             <td>${val(esc(e.volume_weight_kg))}</td>
             <td>${val(esc(e.russian_steel_confirmation))}</td>
@@ -1701,9 +1704,9 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.un_sds_msds))}</td>
             <td>${val(esc(e.product_regulation))}</td>
             <td>${val(esc(e.eol_status))}</td>
-            <td title="${esc(e.alternative_parts)}">${esc(trunc(e.alternative_parts,25))}</td>
+            <td class="col-wrap">${esc(e.alternative_parts)||'—'}</td>
             <td>${val(esc(e.alternative_part_no))}</td>
-            <td title="${esc(e.mfg_address_postal_cn)}">${esc(trunc(e.mfg_address_postal_cn,25))}</td>
+            <td class="col-wrap">${esc(e.mfg_address_postal_cn)||'—'}</td>
             <td>${val(esc(e.uflpa_compliance))}</td>
             <td>${fmtDate(e.uflpa_start_date)}</td>
             <td>${fmtDate(e.uflpa_expiry_date)}</td>
@@ -1764,7 +1767,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${esc(e.supplier_code)||'—'}</td>
             <td>${esc(e.supplier_name)||'—'}</td>
             <td>${esc(e.part_no)||'—'}</td>
-            <td title="${esc(e.part_description)}">${esc(trunc(e.part_description,30))}</td>
+            <td class="col-wrap">${esc(e.part_description)||'—'}</td>
             <td>${val(esc(e.order_qty))}</td>
             <td>${val(esc(e.uom))}</td>
             <td>${val(esc(e.unit_price))}</td>
@@ -1788,7 +1791,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.eccn_ear99))}</td>
             <td class="col-mfr-pn">${val(esc(e.manufacture_part_number))}</td>
             <td>${val(esc(e.manufacturer_name))}</td>
-            <td title="${esc(e.manufacturer_address)}">${esc(trunc(e.manufacturer_address,30))}</td>
+            <td class="col-wrap">${esc(e.manufacturer_address)||'—'}</td>
             <td>${val(esc(e.item_weight_kg))}</td>
             <td>${val(esc(e.volume_weight_kg))}</td>
             <td>${yesno('russian_steel_confirmation',e.pk,e.russian_steel_confirmation)}</td>
@@ -1796,9 +1799,9 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${yesno('un_sds_msds',e.pk,e.un_sds_msds)}</td>
             <td>${prodRegSel}</td>
             <td>${yesno('eol_status',e.pk,e.eol_status)}</td>
-            <td title="${esc(e.alternative_parts)}">${esc(trunc(e.alternative_parts,25))}</td>
+            <td class="col-wrap">${esc(e.alternative_parts)||'—'}</td>
             <td>${val(esc(e.alternative_part_no))}</td>
-            <td title="${esc(e.mfg_address_postal_cn)}">${esc(trunc(e.mfg_address_postal_cn,25))}</td>
+            <td class="col-wrap">${esc(e.mfg_address_postal_cn)||'—'}</td>
             <td>${yesno('uflpa_compliance',e.pk,e.uflpa_compliance)}</td>
             <td>${fmtDate(e.uflpa_start_date)}</td>
             <td>${fmtDate(e.uflpa_expiry_date)}</td>
@@ -1959,7 +1962,10 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
     function buildNav(container, totalPages, page) {
         container.innerHTML = '';
         if (totalPages <= 1) return;
-        addBtn(container, '‹', page > 1, function() { currentPage--; fetchData(); });
+
+        addBtn(container, 'First',    page > 1,            function() { currentPage = 1;           fetchData(); });
+        addBtn(container, 'Previous', page > 1,            function() { currentPage--;              fetchData(); });
+
         var pages = [];
         if (totalPages <= 7) { for (var i = 1; i <= totalPages; i++) pages.push(i); }
         else {
@@ -1979,7 +1985,29 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
                 addBtn(container, p, true, (function(pg) { return function() { currentPage = pg; fetchData(); }; })(p), p === page);
             }
         });
-        addBtn(container, '›', page < totalPages, function() { currentPage++; fetchData(); });
+
+        addBtn(container, 'Next', page < totalPages, function() { currentPage++;           fetchData(); });
+        addBtn(container, 'Last', page < totalPages, function() { currentPage = totalPages; fetchData(); });
+
+        // Go to page
+        var sep = document.createElement('span');
+        sep.className = 'text-muted ms-2 me-1'; sep.style.fontSize = '12px'; sep.textContent = 'Go to page:';
+        container.appendChild(sep);
+
+        var inp = document.createElement('input');
+        inp.type = 'number'; inp.min = 1; inp.max = totalPages;
+        inp.className = 'form-control form-control-sm d-inline-block';
+        inp.style.width = '60px'; inp.placeholder = page;
+        container.appendChild(inp);
+
+        var goBtn = document.createElement('button');
+        goBtn.type = 'button'; goBtn.className = 'btn btn-sm btn-outline-primary ms-1'; goBtn.textContent = 'Go';
+        goBtn.addEventListener('click', function() {
+            var v = parseInt(inp.value);
+            if (v >= 1 && v <= totalPages) { currentPage = v; fetchData(); }
+        });
+        inp.addEventListener('keydown', function(ev) { if (ev.key === 'Enter') goBtn.click(); });
+        container.appendChild(goBtn);
     }
 
     function addBtn(container, label, enabled, onclick, active) {
@@ -2025,6 +2053,6 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
     window.reloadTable = function() { fetchData(); updateDashboard(); };
     fetchData();
     updateDashboard();
-})();
+    })();
 </script>
 {% endblock %}
