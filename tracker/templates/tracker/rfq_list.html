@@ -805,6 +805,22 @@ function trunc(s, n) {
     return s.length > n ? s.substring(0, n - 1) + '…' : s;
 }
 function val(v) { return v || '—'; }
+
+// ── Number formatters ─────────────────────────────────────────────
+function fmtNum(v, dec) {
+    if (v === null || v === undefined || v === '' || v === '—') return '—';
+    const n = parseFloat(v);
+    if (isNaN(n)) return String(v) || '—';
+    return dec === 0 ? String(Math.round(n)) : n.toFixed(dec);
+}
+const fmtQty    = v => fmtNum(v, 0);   // order qty, MOQs, lot size
+const fmtPrice  = v => fmtNum(v, 2);   // unit prices
+const fmtWeight = v => fmtNum(v, 2);   // item/volume weight
+function fmtCode(v) {                   // supplier code: strip trailing .0
+    if (!v && v !== 0) return '—';
+    return String(v).replace(/\.0+$/, '') || '—';
+}
+
 function fmtDate(iso) {
     if (!iso || iso === '—' || iso === '') return '—';
     const parts = iso.split('-');
@@ -1359,13 +1375,13 @@ function updateRowFromEntry(row, e) {
         if (sel) { sel.value = e[field] || ''; sel.dataset.original = e[field] || ''; }
     }
 
-    txt(2,  e.supplier_code);
+    txt(2,  fmtCode(e.supplier_code));
     txt(3,  e.supplier_name);
     txt(4,  e.part_no);
     txt(5,  e.part_description);
-    txt(6,  e.order_qty);
+    txt(6,  fmtQty(e.order_qty));
     txt(7,  e.uom);
-    txt(8,  e.unit_price);
+    txt(8,  fmtPrice(e.unit_price));
     txt(9,  e.currency);
     txt(10, e.pic);
     eml(11, e.contact_email);
@@ -1375,20 +1391,20 @@ function updateRowFromEntry(row, e) {
     txt(15, e.quote_uom);
     txt(16, e.coo);
     txt(17, e.quote_currency);
-    txt(18, e.unit_price_1);
-    txt(19, e.moq_1);
-    txt(20, e.unit_price_2);
-    txt(21, e.moq_2);
-    txt(22, e.unit_price_3);
-    txt(23, e.moq_3);
-    txt(24, e.lot_size);
+    txt(18, fmtPrice(e.unit_price_1));
+    txt(19, fmtQty(e.moq_1));
+    txt(20, fmtPrice(e.unit_price_2));
+    txt(21, fmtQty(e.moq_2));
+    txt(22, fmtPrice(e.unit_price_3));
+    txt(23, fmtQty(e.moq_3));
+    txt(24, fmtQty(e.lot_size));
     txt(25, e.hts_code);
     txt(26, e.eccn_ear99);
     txt(27, e.manufacture_part_number);
     txt(28, e.manufacturer_name);
     txt(29, e.manufacturer_address);
-    txt(30, e.item_weight_kg);
-    txt(31, e.volume_weight_kg);
+    txt(30, fmtWeight(e.item_weight_kg));
+    txt(31, fmtWeight(e.volume_weight_kg));
     ddrop(32, 'russian_steel_confirmation');
     ddrop(33, 'hazmat');
     ddrop(34, 'un_sds_msds');
@@ -1648,7 +1664,10 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
         fetchData();
     });
 
-    function emailLink(e) { return e ? `<a href="mailto:${esc(e)}">${esc(e)}</a>` : '—'; }
+    function emailLink(e) {
+        if (!e || /^\s*[\d.]+\s*$/.test(String(e))) return '—';
+        return `<a href="mailto:${esc(e)}">${esc(e)}</a>`;
+    }
 
     function yesno(field, pk, v) {
         return `<select class="inline-select" data-pk="${pk}" data-field="${field}">
@@ -1669,13 +1688,13 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
         return `<tr data-pk="${e.pk}">
             <td class="col-check"></td>
             <td>${rowNum}</td>
-            <td>${esc(e.supplier_code)||'—'}</td>
+            <td>${fmtCode(e.supplier_code)}</td>
             <td>${esc(e.supplier_name)||'—'}</td>
             <td>${esc(e.part_no)||'—'}</td>
             <td class="col-wrap">${esc(e.part_description)||'—'}</td>
-            <td>${val(esc(e.order_qty))}</td>
+            <td>${fmtQty(e.order_qty)}</td>
             <td>${val(esc(e.uom))}</td>
-            <td>${val(esc(e.unit_price))}</td>
+            <td>${fmtPrice(e.unit_price)}</td>
             <td>${val(esc(e.currency))}</td>
             <td>${val(esc(e.pic))}</td>
             <td>${emailLink(e.contact_email)}</td>
@@ -1685,20 +1704,20 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.quote_uom))}</td>
             <td>${val(esc(e.coo))}</td>
             <td>${val(esc(e.quote_currency))}</td>
-            <td>${val(esc(e.unit_price_1))}</td>
-            <td>${val(esc(e.moq_1))}</td>
-            <td>${val(esc(e.unit_price_2))}</td>
-            <td>${val(esc(e.moq_2))}</td>
-            <td>${val(esc(e.unit_price_3))}</td>
-            <td>${val(esc(e.moq_3))}</td>
-            <td>${val(esc(e.lot_size))}</td>
+            <td>${fmtPrice(e.unit_price_1)}</td>
+            <td>${fmtQty(e.moq_1)}</td>
+            <td>${fmtPrice(e.unit_price_2)}</td>
+            <td>${fmtQty(e.moq_2)}</td>
+            <td>${fmtPrice(e.unit_price_3)}</td>
+            <td>${fmtQty(e.moq_3)}</td>
+            <td>${fmtQty(e.lot_size)}</td>
             <td>${val(esc(e.hts_code))}</td>
             <td>${val(esc(e.eccn_ear99))}</td>
             <td class="col-mfr-pn">${val(esc(e.manufacture_part_number))}</td>
             <td>${val(esc(e.manufacturer_name))}</td>
             <td class="col-wrap">${esc(e.manufacturer_address)||'—'}</td>
-            <td>${val(esc(e.item_weight_kg))}</td>
-            <td>${val(esc(e.volume_weight_kg))}</td>
+            <td>${fmtWeight(e.item_weight_kg)}</td>
+            <td>${fmtWeight(e.volume_weight_kg)}</td>
             <td>${val(esc(e.russian_steel_confirmation))}</td>
             <td>${val(esc(e.hazmat))}</td>
             <td>${val(esc(e.un_sds_msds))}</td>
@@ -1764,13 +1783,13 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
         return `<tr data-pk="${e.pk}">
             <td class="col-check"><input type="checkbox" class="form-check-input row-check" data-pk="${e.pk}"${isChecked?' checked':''}></td>
             <td>${rowNum}</td>
-            <td>${esc(e.supplier_code)||'—'}</td>
+            <td>${fmtCode(e.supplier_code)}</td>
             <td>${esc(e.supplier_name)||'—'}</td>
             <td>${esc(e.part_no)||'—'}</td>
             <td class="col-wrap">${esc(e.part_description)||'—'}</td>
-            <td>${val(esc(e.order_qty))}</td>
+            <td>${fmtQty(e.order_qty)}</td>
             <td>${val(esc(e.uom))}</td>
-            <td>${val(esc(e.unit_price))}</td>
+            <td>${fmtPrice(e.unit_price)}</td>
             <td>${val(esc(e.currency))}</td>
             <td>${val(esc(e.pic))}</td>
             <td>${emailLink(e.contact_email)}</td>
@@ -1780,20 +1799,20 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
             <td>${val(esc(e.quote_uom))}</td>
             <td>${val(esc(e.coo))}</td>
             <td>${val(esc(e.quote_currency))}</td>
-            <td>${val(esc(e.unit_price_1))}</td>
-            <td>${val(esc(e.moq_1))}</td>
-            <td>${val(esc(e.unit_price_2))}</td>
-            <td>${val(esc(e.moq_2))}</td>
-            <td>${val(esc(e.unit_price_3))}</td>
-            <td>${val(esc(e.moq_3))}</td>
-            <td>${val(esc(e.lot_size))}</td>
+            <td>${fmtPrice(e.unit_price_1)}</td>
+            <td>${fmtQty(e.moq_1)}</td>
+            <td>${fmtPrice(e.unit_price_2)}</td>
+            <td>${fmtQty(e.moq_2)}</td>
+            <td>${fmtPrice(e.unit_price_3)}</td>
+            <td>${fmtQty(e.moq_3)}</td>
+            <td>${fmtQty(e.lot_size)}</td>
             <td>${val(esc(e.hts_code))}</td>
             <td>${val(esc(e.eccn_ear99))}</td>
             <td class="col-mfr-pn">${val(esc(e.manufacture_part_number))}</td>
             <td>${val(esc(e.manufacturer_name))}</td>
             <td class="col-wrap">${esc(e.manufacturer_address)||'—'}</td>
-            <td>${val(esc(e.item_weight_kg))}</td>
-            <td>${val(esc(e.volume_weight_kg))}</td>
+            <td>${fmtWeight(e.item_weight_kg)}</td>
+            <td>${fmtWeight(e.volume_weight_kg)}</td>
             <td>${yesno('russian_steel_confirmation',e.pk,e.russian_steel_confirmation)}</td>
             <td>${yesno('hazmat',e.pk,e.hazmat)}</td>
             <td>${yesno('un_sds_msds',e.pk,e.un_sds_msds)}</td>

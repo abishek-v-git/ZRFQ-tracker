@@ -129,6 +129,7 @@ DECIMAL_FIELDS = {
 }
 INT_FIELDS = {'lead_time_days', 'ship_lead_time_days'}
 DATE_FIELDS = {'uflpa_start_date', 'uflpa_expiry_date', 'usmca_start_date', 'usmca_expiry_date'}
+EMAIL_FIELDS = {'contact_email', 'contact_secondary_email'}
 
 
 def _normalize_header(text):
@@ -210,6 +211,12 @@ def _coerce(field, value):
             except ValueError:
                 continue
         return None
+    # Email fields: numeric 0 / 0.0 from empty Excel formula cells → blank
+    if field in EMAIL_FIELDS and isinstance(value, (int, float)) and value == 0:
+        return ''
+    # String fields: whole-number floats → strip decimal (e.g. 5659202.0 → '5659202')
+    if isinstance(value, float) and value == int(value):
+        return str(int(value))
     return str(value).strip()
 
 
