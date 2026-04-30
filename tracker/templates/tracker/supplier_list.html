@@ -20,10 +20,29 @@
     </div>
 </div>
 
+{% if not is_viewer %}
+<!-- Supplier Bulk Delete Bar -->
+<div id="supBulkBar" style="display:none; position:fixed; bottom:0; left:0; right:0;
+     background:#003366; color:#fff; padding:10px 24px; z-index:8000;
+     align-items:center; gap:16px; box-shadow:0 -4px 12px rgba(0,0,0,0.2);">
+    <span id="supBulkCount" style="font-weight:600; white-space:nowrap;"></span>
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <button class="btn btn-sm btn-outline-light" onclick="clearSupSelection()">
+        <i class="bi bi-x-lg me-1"></i>Deselect All
+    </button>
+    <button class="btn btn-sm btn-danger" id="supBulkDeleteBtn">
+        <i class="bi bi-trash me-1"></i>Delete Selected
+    </button>
+</div>
+{% endif %}
+
 <div class="table-wrapper">
     <table class="table table-bordered mb-0" id="supplierTable" style="background:#fff; font-size:12px; min-width:1100px;">
         <thead>
             <tr style="background:#003366; color:#fff;">
+                {% if not is_viewer %}<th style="width:36px; text-align:center;">
+                    <input type="checkbox" class="form-check-input" id="supSelectAll" title="Select all">
+                </th>{% endif %}
                 <th style="width:36px;">#</th>
                 <th style="min-width:110px;">Supplier Code</th>
                 <th style="min-width:170px;">Company Name</th>
@@ -37,7 +56,7 @@
             </tr>
         </thead>
         <tbody id="supplierTableBody">
-            <tr><td colspan="10" class="text-center text-muted py-4">Loading…</td></tr>
+            <tr><td colspan="11" class="text-center text-muted py-4">Loading…</td></tr>
         </tbody>
     </table>
 </div>
@@ -232,8 +251,12 @@ function renderTable(suppliers) {
     const rows = suppliers.map((s, i) => {
         const cm = contactMap(s);
         const cells = COL_TYPES.map(ct => `<td style="vertical-align:top; padding:6px 8px;">${renderContactCell(cm[ct])}</td>`).join('');
+        const isChecked = supSelectedPks.has(s.pk);
         return `
-        <tr>
+        <tr data-pk="${s.pk}">
+            ${IS_VIEWER ? '' : `<td class="text-center align-middle" style="width:36px;">
+                <input type="checkbox" class="form-check-input sup-row-check" data-pk="${s.pk}"${isChecked ? ' checked' : ''}>
+            </td>`}
             <td class="text-muted text-center align-middle" style="width:36px;">${i + 1}</td>
             <td class="align-middle"><strong>${esc(s.supplier_code)}</strong></td>
             <td class="align-middle">${esc(s.supplier_company_name)}</td>
@@ -251,6 +274,7 @@ function renderTable(suppliers) {
     });
 
     tbody.innerHTML = rows.join('');
+    if (!IS_VIEWER) bindSupCheckboxes();
 }
 
 /* ── Edit Modal ─────────────────────────────────────────────────────────── */
@@ -461,5 +485,93 @@ function esc(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Supplier bulk delete ──────────────────────────────────────────
+const supSelectedPks = new Set();
+
+function updateSupBulkBar() {
+    const bar = document.getElementById('supBulkBar');
+    if (!bar) return;
+    const count = supSelectedPks.size;
+    if (count > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('supBulkCount').textContent = count + ' supplier' + (count > 1 ? 's' : '') + ' selected';
+    } else {
+        bar.style.display = 'none';
+    }
+    const selectAllCb = document.getElementById('supSelectAll');
+    if (!selectAllCb) return;
+    const all = document.querySelectorAll('.sup-row-check');
+    if (all.length > 0 && count === all.length) {
+        selectAllCb.checked = true; selectAllCb.indeterminate = false;
+    } else if (count === 0) {
+        selectAllCb.checked = false; selectAllCb.indeterminate = false;
+    } else {
+        selectAllCb.checked = false; selectAllCb.indeterminate = true;
+    }
+}
+
+function clearSupSelection() {
+    supSelectedPks.clear();
+    document.querySelectorAll('.sup-row-check').forEach(cb => cb.checked = false);
+    const sa = document.getElementById('supSelectAll');
+    if (sa) { sa.checked = false; sa.indeterminate = false; }
+    updateSupBulkBar();
+}
+
+function bindSupCheckboxes() {
+    document.querySelectorAll('.sup-row-check').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const pk = parseInt(this.dataset.pk);
+            if (this.checked) supSelectedPks.add(pk);
+            else supSelectedPks.delete(pk);
+            updateSupBulkBar();
+        });
+    });
+    const sa = document.getElementById('supSelectAll');
+    if (sa) {
+        sa.onchange = function() {
+            document.querySelectorAll('.sup-row-check').forEach(cb => {
+                cb.checked = this.checked;
+                const pk = parseInt(cb.dataset.pk);
+                if (this.checked) supSelectedPks.add(pk);
+                else supSelectedPks.delete(pk);
+            });
+            updateSupBulkBar();
+        };
+    }
+}
+
+const _supBulkDeleteBtn = document.getElementById('supBulkDeleteBtn');
+if (_supBulkDeleteBtn) _supBulkDeleteBtn.addEventListener('click', function() {
+    if (!supSelectedPks.size) return;
+    const count = supSelectedPks.size;
+    if (!confirm(`Delete ${count} supplier${count > 1 ? 's' : ''} and all their contacts? This cannot be undone.`)) return;
+
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+
+    fetch('{% url "supplier_bulk_delete" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ pks: Array.from(supSelectedPks) }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Selected';
+        if (data.ok) {
+            clearSupSelection();
+            loadSuppliers();
+        } else {
+            alert(data.error || 'Delete failed.');
+        }
+    })
+    .catch(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Selected';
+        alert('Network error.');
+    });
+});
 </script>
 {% endblock %}

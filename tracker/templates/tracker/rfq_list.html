@@ -1266,6 +1266,7 @@ function openEditModal(pk, rowEl) {
         body.innerHTML = '';
         body.appendChild(tpl.content.cloneNode(true));
         populateEditForm(e);
+        bindEditModalSync();
         saveBtn.disabled = false;
     })
     .catch(() => {
@@ -1319,7 +1320,29 @@ function populateEditForm(e) {
     set('id_edit-usmca_certificate',       e.usmca_certificate);
     set('id_edit-usmca_start_date',        e.usmca_start_date);
     set('id_edit-usmca_expiry_date',       e.usmca_expiry_date);
+    set('id_edit-rfq_sent',                e.rfq_sent);
+    // Status: if the stored value isn't one of the fixed choices, add it as an option
+    (function() {
+        const statusEl = document.getElementById('id_edit-status');
+        if (!statusEl) return;
+        const v = e.status || '';
+        const hasOpt = Array.from(statusEl.options).some(o => o.value === v);
+        if (!hasOpt && v) statusEl.appendChild(new Option(v, v));
+        statusEl.value = v;
+    })();
     set('id_edit-comments',                e.comments);
+}
+
+function bindEditModalSync() {
+    const rfqEl    = document.getElementById('id_edit-rfq_sent');
+    const statusEl = document.getElementById('id_edit-status');
+    if (!rfqEl || !statusEl) return;
+    statusEl.addEventListener('change', function() {
+        rfqEl.value = this.value ? 'Yes' : 'No';
+    });
+    rfqEl.addEventListener('change', function() {
+        if (this.value === 'No') statusEl.value = '';
+    });
 }
 
 function updateRowFromEntry(row, e) {

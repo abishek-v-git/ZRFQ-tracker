@@ -24,4 +24,5 @@ urlpatterns = [
     path('suppliers/save/', views.supplier_save, name='supplier_save'),
     path('suppliers/delete/<int:pk>/', views.supplier_delete, name='supplier_delete'),
     path('suppliers/upload-template/', views.supplier_template_upload, name='supplier_template_upload'),
+    path('suppliers/bulk-delete/', views.supplier_bulk_delete, name='supplier_bulk_delete'),
 ]

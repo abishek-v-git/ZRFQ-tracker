@@ -1120,6 +1120,13 @@ def rfq_bulk_upload(request):
                 if not kwargs.get('supplier_code') and not kwargs.get('supplier_name'):
                     continue
 
+                # Default status to "No Response Yet" and rfq_sent to "Yes"
+                # when the file doesn't provide them (model.save() syncs rfq_sent from status)
+                if not kwargs.get('status'):
+                    kwargs['status'] = 'No Response Yet'
+                if not kwargs.get('rfq_sent'):
+                    kwargs['rfq_sent'] = 'Yes'
+
                 existing = RFQEntry.objects.filter(
                     supplier_code=kwargs.get('supplier_code') or '',
                     supplier_name=kwargs.get('supplier_name') or '',
@@ -1214,10 +1221,11 @@ def rfq_deduplicate(request):
 @login_required
 @editor_required
 def rfq_clear_all(request):
-    """Delete every RFQEntry (POST only)."""
+    """Delete every RFQEntry and every Supplier (POST only)."""
     if request.method == 'POST':
-        count, _ = RFQEntry.objects.all().delete()
-        messages.success(request, f'All data cleared — {count} record(s) deleted.')
+        rfq_count, _ = RFQEntry.objects.all().delete()
+        sup_count, _ = Supplier.objects.all().delete()
+        messages.success(request, f'All data cleared — {rfq_count} RFQ record(s) and {sup_count} supplier(s) deleted.')
     return redirect('rfq_list')
 
 
@@ -1409,6 +1417,23 @@ def supplier_delete(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
     supplier.delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+@editor_required
+def supplier_bulk_delete(request):
+    """Delete a list of suppliers via AJAX JSON POST."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body)
+        pks  = [int(p) for p in data.get('pks', [])]
+    except (json.JSONDecodeError, ValueError, AttributeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid request.'}, status=400)
+    if not pks:
+        return JsonResponse({'ok': False, 'error': 'No rows selected.'}, status=400)
+    deleted, _ = Supplier.objects.filter(pk__in=pks).delete()
+    return JsonResponse({'ok': True, 'deleted': deleted})
 
 
 @login_required
