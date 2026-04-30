@@ -12,6 +12,7 @@ urlpatterns = [
     path('resolve-duplicates/', views.rfq_resolve_duplicates, name='rfq_resolve_duplicates'),
     path('deduplicate/', views.rfq_deduplicate, name='rfq_deduplicate'),
     path('bulk-status/', views.rfq_bulk_status, name='rfq_bulk_status'),
+    path('bulk-delete/', views.rfq_bulk_delete, name='rfq_bulk_delete'),
     path('clear-all/', views.rfq_clear_all, name='rfq_clear_all'),
     path('patch/<int:pk>/', views.rfq_patch, name='rfq_patch'),
     path('edit-json/<int:pk>/', views.rfq_edit_json, name='rfq_edit_json'),

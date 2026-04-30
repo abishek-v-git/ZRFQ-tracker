@@ -1,5 +1,6 @@
 {% extends "tracker/base.html" %}
 {% block content %}
+<div id="page-config" data-viewer="{% if is_viewer %}1{% else %}0{% endif %}" hidden></div>
 
 <style>
     .rfq-table th.sortable { cursor: pointer; position: relative; padding-right: 25px !important; }
@@ -264,6 +265,7 @@
 
 <!-- Top Action Bar -->
 <div class="d-flex align-items-center gap-2 mb-3">
+    {% if not is_viewer %}
     <button class="btn btn-primary btn-sm" id="toggleAddBtn" onclick="toggleAddButtons()">
         <i class="bi bi-plus-lg me-1"></i>Add New Item
     </button>
@@ -276,10 +278,12 @@
             <i class="bi bi-upload me-1"></i>Bulk Upload
         </button>
     </div>
+    {% endif %}
 
     <a href="{% url 'rfq_export' %}" class="btn btn-success btn-sm">
         <i class="bi bi-file-earmark-excel me-1"></i>Export to Excel
     </a>
+    {% if not is_viewer %}
     <button class="btn btn-outline-warning btn-sm" id="dedupeBtn" onclick="openDedupeModal()"
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-subtract me-1"></i>Remove Duplicates
@@ -288,7 +292,8 @@
             {% if not total_count %}disabled{% endif %}>
         <i class="bi bi-trash3 me-1"></i>Clear All Data
     </button>
-    <a href="{% url 'rfq_download_template' %}" class="btn btn-sm btn-outline-info ms-auto">
+    {% endif %}
+    <a href="{% url 'rfq_download_template' %}" class="btn btn-sm btn-outline-info {% if is_viewer %}ms-auto{% endif %}">
         <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Template
     </a>
     <span class="text-muted" style="font-size:12px;" id="entryCountBadge">{{ total_count }} entr{{ total_count|pluralize:"y,ies" }}</span>
@@ -322,7 +327,7 @@
             <thead>
                 <tr>
                     <th class="col-check" style="background:#003366;">
-                        <input type="checkbox" class="form-check-input" id="selectAll" title="Select all on this page">
+                        {% if not is_viewer %}<input type="checkbox" class="form-check-input" id="selectAll" title="Select all on this page">{% endif %}
                     </th>
                     <th class="sortable" data-col="0">#</th>
                     <th class="sortable" data-col="1">Supplier Code</th>
@@ -389,6 +394,7 @@
 <!-- Pagination Controls (bottom) -->
 <div class="d-flex align-items-center justify-content-end gap-1 mt-2 mb-3" id="pageNavBottom" style="font-size:13px;"></div>
 
+{% if not is_viewer %}
 <!-- ── Bulk Action Bar ── -->
 <div id="bulkBar">
     <span id="bulkSelCount" style="font-weight:600; white-space:nowrap;"></span>
@@ -408,7 +414,12 @@
     <button class="btn btn-sm btn-outline-light" onclick="clearSelection()">
         <i class="bi bi-x-lg me-1"></i>Deselect All
     </button>
+    <span style="opacity:0.5; font-size:12px;">|</span>
+    <button class="btn btn-sm btn-danger" id="bulkDeleteBtn">
+        <i class="bi bi-trash me-1"></i>Delete Selected
+    </button>
 </div>
+{% endif %}
 
 <!-- ── Add New Item Modal ── -->
 <div class="modal fade" id="addModal" tabindex="-1" data-has-errors="{% if form.errors %}1{% else %}0{% endif %}">
@@ -768,6 +779,8 @@
 </div>
 
 <script>
+const IS_VIEWER = document.getElementById('page-config').dataset.viewer === '1';
+
 // ── Utilities ─────────────────────────────────────────────────────
 function getCsrfToken() {
     const c = document.cookie.split(';').find(s => s.trim().startsWith('csrftoken='));
@@ -818,7 +831,8 @@ document.getElementById('deleteModal').addEventListener('show.bs.modal', functio
 });
 
 // ── Bulk upload ───────────────────────────────────────────────────
-document.getElementById('bulkFileInput').addEventListener('change', function() {
+const _bulkFileInput = document.getElementById('bulkFileInput');
+if (_bulkFileInput) _bulkFileInput.addEventListener('change', function() {
     const preview = document.getElementById('filePreview');
     const list = document.getElementById('fileList');
     list.innerHTML = '';
@@ -1428,6 +1442,7 @@ document.getElementById('editModalBody').addEventListener('submit', function(evt
 const selectedPks = new Set();
 
 function updateBulkBar() {
+    if (IS_VIEWER) return;
     const bar = document.getElementById('bulkBar');
     const count = selectedPks.size;
     if (count > 0) {
@@ -1439,6 +1454,7 @@ function updateBulkBar() {
     // Sync select-all checkbox state
     const all = document.querySelectorAll('.row-check');
     const selectAllCb = document.getElementById('selectAll');
+    if (!selectAllCb) return;
     if (all.length > 0 && selectedPks.size === all.length) {
         selectAllCb.checked = true;
         selectAllCb.indeterminate = false;
@@ -1452,14 +1468,16 @@ function updateBulkBar() {
 }
 
 function clearSelection() {
+    if (IS_VIEWER) return;
     selectedPks.clear();
     document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
-    document.getElementById('selectAll').checked = false;
-    document.getElementById('selectAll').indeterminate = false;
+    const selectAllCb = document.getElementById('selectAll');
+    if (selectAllCb) { selectAllCb.checked = false; selectAllCb.indeterminate = false; }
     updateBulkBar();
 }
 
-document.getElementById('selectAll').addEventListener('change', function() {
+const _selectAll = document.getElementById('selectAll');
+if (_selectAll) _selectAll.addEventListener('change', function() {
     document.querySelectorAll('.row-check').forEach(cb => {
         cb.checked = this.checked;
         const pk = parseInt(cb.dataset.pk);
@@ -1469,13 +1487,15 @@ document.getElementById('selectAll').addEventListener('change', function() {
     updateBulkBar();
 });
 
-document.getElementById('bulkStatusSel').addEventListener('change', function() {
+const _bulkStatusSel = document.getElementById('bulkStatusSel');
+if (_bulkStatusSel) _bulkStatusSel.addEventListener('change', function() {
     const inp = document.getElementById('bulkOthersInput');
     inp.style.display = this.value === 'Others' ? '' : 'none';
     if (this.value === 'Others') inp.focus();
 });
 
-document.getElementById('bulkApplyBtn').addEventListener('click', function() {
+const _bulkApplyBtn = document.getElementById('bulkApplyBtn');
+if (_bulkApplyBtn) _bulkApplyBtn.addEventListener('click', function() {
     if (!selectedPks.size) return;
     const selVal = document.getElementById('bulkStatusSel').value;
     const otherVal = document.getElementById('bulkOthersInput').value.trim();
@@ -1520,6 +1540,45 @@ document.getElementById('bulkApplyBtn').addEventListener('click', function() {
     .catch(() => {
         this.disabled = false;
         this.innerHTML = '<i class="bi bi-check-lg me-1"></i>Apply';
+        showToast('Network error', false);
+    });
+});
+
+// ── Bulk Delete ───────────────────────────────────────────────────
+const _bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
+    if (!selectedPks.size) return;
+    const count = selectedPks.size;
+    if (!confirm(`Delete ${count} selected row${count > 1 ? 's' : ''}? This cannot be undone.`)) return;
+
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+
+    fetch('{% url "rfq_bulk_delete" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ pks: Array.from(selectedPks) }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Selected';
+        if (data.ok) {
+            selectedPks.forEach(pk => {
+                const row = document.querySelector(`tr[data-pk="${pk}"]`);
+                if (row) row.remove();
+            });
+            clearSelection();
+            showToast(`${data.deleted} row${data.deleted > 1 ? 's' : ''} deleted`, true);
+            updateDashboard();
+            window.reloadTable();
+        } else {
+            showToast(data.error || 'Delete failed', false);
+        }
+    })
+    .catch(() => {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-trash me-1"></i>Delete Selected';
         showToast('Network error', false);
     });
 });
@@ -1573,7 +1632,74 @@ document.getElementById('bulkApplyBtn').addEventListener('click', function() {
         </select>`;
     }
 
+    function buildRowViewer(e, rowNum) {
+        const statusClass = getStatusClass(e.status);
+        const STATUS_LABELS = {
+            'Completed': 'COMPLETED',
+            'Partially Data Received': 'PARTIAL DATA',
+            'No Response Yet': 'NO RESPONSE',
+        };
+        const statusLabel = STATUS_LABELS[e.status] || (e.status ? esc(e.status) : '— NO STATUS —');
+        return `<tr data-pk="${e.pk}">
+            <td class="col-check"></td>
+            <td>${rowNum}</td>
+            <td>${esc(e.supplier_code)||'—'}</td>
+            <td>${esc(e.supplier_name)||'—'}</td>
+            <td>${esc(e.part_no)||'—'}</td>
+            <td title="${esc(e.part_description)}">${esc(trunc(e.part_description,30))}</td>
+            <td>${val(esc(e.order_qty))}</td>
+            <td>${val(esc(e.uom))}</td>
+            <td>${val(esc(e.unit_price))}</td>
+            <td>${val(esc(e.currency))}</td>
+            <td>${val(esc(e.pic))}</td>
+            <td>${emailLink(e.contact_email)}</td>
+            <td>${emailLink(e.contact_secondary_email)}</td>
+            <td>${val(esc(e.lead_time_days))}</td>
+            <td>${val(esc(e.ship_lead_time_days))}</td>
+            <td>${val(esc(e.quote_uom))}</td>
+            <td>${val(esc(e.coo))}</td>
+            <td>${val(esc(e.quote_currency))}</td>
+            <td>${val(esc(e.unit_price_1))}</td>
+            <td>${val(esc(e.moq_1))}</td>
+            <td>${val(esc(e.unit_price_2))}</td>
+            <td>${val(esc(e.moq_2))}</td>
+            <td>${val(esc(e.unit_price_3))}</td>
+            <td>${val(esc(e.moq_3))}</td>
+            <td>${val(esc(e.lot_size))}</td>
+            <td>${val(esc(e.hts_code))}</td>
+            <td>${val(esc(e.eccn_ear99))}</td>
+            <td class="col-mfr-pn">${val(esc(e.manufacture_part_number))}</td>
+            <td>${val(esc(e.manufacturer_name))}</td>
+            <td title="${esc(e.manufacturer_address)}">${esc(trunc(e.manufacturer_address,30))}</td>
+            <td>${val(esc(e.item_weight_kg))}</td>
+            <td>${val(esc(e.volume_weight_kg))}</td>
+            <td>${val(esc(e.russian_steel_confirmation))}</td>
+            <td>${val(esc(e.hazmat))}</td>
+            <td>${val(esc(e.un_sds_msds))}</td>
+            <td>${val(esc(e.product_regulation))}</td>
+            <td>${val(esc(e.eol_status))}</td>
+            <td title="${esc(e.alternative_parts)}">${esc(trunc(e.alternative_parts,25))}</td>
+            <td>${val(esc(e.alternative_part_no))}</td>
+            <td title="${esc(e.mfg_address_postal_cn)}">${esc(trunc(e.mfg_address_postal_cn,25))}</td>
+            <td>${val(esc(e.uflpa_compliance))}</td>
+            <td>${fmtDate(e.uflpa_start_date)}</td>
+            <td>${fmtDate(e.uflpa_expiry_date)}</td>
+            <td>${val(esc(e.usmca_certificate))}</td>
+            <td>${fmtDate(e.usmca_start_date)}</td>
+            <td>${fmtDate(e.usmca_expiry_date)}</td>
+            <td class="rfq-sent-cell">${val(esc(e.rfq_sent))}</td>
+            <td class="status-cell" style="min-width:150px;">
+                <div class="status-badge-container ${statusClass}">
+                    <span class="status-sel-badge">${statusLabel}</span>
+                </div>
+            </td>
+            <td class="comments-cell" style="min-width:200px;">${esc(e.comments)||'—'}</td>
+            <td></td>
+        </tr>`;
+    }
+
     function buildRow(e, rowNum) {
+        if (IS_VIEWER) return buildRowViewer(e, rowNum);
         const FIXED = ['No Response Yet','Partially Data Received','Completed'];
         const isOthers = e.status && !FIXED.includes(e.status);
 
@@ -1675,6 +1801,7 @@ document.getElementById('bulkApplyBtn').addEventListener('click', function() {
     }
 
     function bindRowEvents(tr) {
+        if (IS_VIEWER) return;
         // Checkbox
         tr.querySelector('.row-check').addEventListener('change', function() {
             const pk = parseInt(this.dataset.pk);

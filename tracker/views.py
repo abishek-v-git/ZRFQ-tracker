@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from .models import RFQEntry, Supplier, SupplierContact
 from .forms import RFQEntryForm
+from functools import wraps
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -11,6 +12,24 @@ from openpyxl.utils import get_column_letter
 import datetime
 import json
 import re
+
+
+def _is_viewer(user):
+    return user.groups.filter(name='Viewer').exists()
+
+
+def editor_required(view_func):
+    """Block Viewer-group users from write operations."""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if _is_viewer(request.user):
+            if request.content_type == 'application/json' or \
+               request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'ok': False, 'error': 'Permission denied.'}, status=403)
+            messages.error(request, 'You do not have permission to perform this action.')
+            return redirect('rfq_list')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 # Maps Excel column headers → model field names
 BULK_COLUMN_MAP = {
@@ -284,6 +303,7 @@ def rfq_list(request):
         'form': form,
         'edit_form': edit_form,
         'stats': _compute_stats(),
+        'is_viewer': _is_viewer(request.user),
     }
     return render(request, 'tracker/rfq_list.html', ctx)
 
@@ -396,6 +416,7 @@ def rfq_data(request):
 
 
 @login_required
+@editor_required
 def rfq_add(request):
     if request.method == 'POST':
         form = RFQEntryForm(request.POST)
@@ -412,6 +433,7 @@ def rfq_add(request):
 
 
 @login_required
+@editor_required
 def rfq_delete(request, pk):
     entry = get_object_or_404(RFQEntry, pk=pk)
     if request.method == 'POST':
@@ -421,6 +443,7 @@ def rfq_delete(request, pk):
 
 
 @login_required
+@editor_required
 def rfq_edit(request, pk):
     entry = get_object_or_404(RFQEntry, pk=pk)
     if request.method == 'POST':
@@ -785,6 +808,7 @@ def _kwargs_to_display(kwargs):
 
 
 @login_required
+@editor_required
 def rfq_resolve_duplicates(request):
     """Apply keep/replace choices returned by the duplicate resolution modal."""
     if request.method != 'POST':
@@ -977,6 +1001,7 @@ def rfq_download_template(request):
 
 
 @login_required
+@editor_required
 def rfq_bulk_upload(request):
     if request.method != 'POST':
         return redirect('rfq_list')
@@ -1147,6 +1172,7 @@ def rfq_bulk_upload(request):
 
 
 @login_required
+@editor_required
 def rfq_deduplicate(request):
     """
     GET  → return count of duplicate rows that would be removed (dry-run).
@@ -1186,6 +1212,7 @@ def rfq_deduplicate(request):
 
 
 @login_required
+@editor_required
 def rfq_clear_all(request):
     """Delete every RFQEntry (POST only)."""
     if request.method == 'POST':
@@ -1195,6 +1222,7 @@ def rfq_clear_all(request):
 
 
 @login_required
+@editor_required
 def rfq_bulk_status(request):
     """Update status on a list of RFQ entries via AJAX JSON POST."""
     if request.method != 'POST':
@@ -1213,6 +1241,24 @@ def rfq_bulk_status(request):
 
 
 @login_required
+@editor_required
+def rfq_bulk_delete(request):
+    """Delete a list of RFQ entries via AJAX JSON POST."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    try:
+        data = json.loads(request.body)
+        pks  = [int(p) for p in data.get('pks', [])]
+    except (json.JSONDecodeError, ValueError, AttributeError):
+        return JsonResponse({'ok': False, 'error': 'Invalid request.'}, status=400)
+    if not pks:
+        return JsonResponse({'ok': False, 'error': 'No rows selected.'}, status=400)
+    deleted, _ = RFQEntry.objects.filter(pk__in=pks).delete()
+    return JsonResponse({'ok': True, 'deleted': deleted})
+
+
+@login_required
+@editor_required
 def rfq_patch(request, pk):
     """Inline-update a single dropdown field via AJAX."""
     if request.method != 'POST':
@@ -1241,6 +1287,7 @@ def rfq_patch(request, pk):
 
 
 @login_required
+@editor_required
 def rfq_edit_json(request, pk):
     """Load (GET) or save (POST) an entry via AJAX — used by the edit modal."""
     entry = get_object_or_404(RFQEntry, pk=pk)
@@ -1272,7 +1319,7 @@ def _supplier_to_dict(supplier):
 @login_required
 def supplier_list(request):
     total = Supplier.objects.count()
-    return render(request, 'tracker/supplier_list.html', {'total': total})
+    return render(request, 'tracker/supplier_list.html', {'total': total, 'is_viewer': _is_viewer(request.user)})
 
 
 @login_required
@@ -1296,6 +1343,7 @@ def supplier_data(request):
 
 
 @login_required
+@editor_required
 def supplier_save(request):
     """Create or update a supplier + its contacts via AJAX JSON POST."""
     if request.method != 'POST':
@@ -1354,6 +1402,7 @@ def supplier_save(request):
 
 
 @login_required
+@editor_required
 def supplier_delete(request, pk):
     if request.method != 'POST':
         return JsonResponse({'ok': False}, status=405)
@@ -1363,6 +1412,7 @@ def supplier_delete(request, pk):
 
 
 @login_required
+@editor_required
 def supplier_template_upload(request):
     """Parse Info sheet(s) from uploaded ZEISS Supplier Template files."""
     if request.method != 'POST':

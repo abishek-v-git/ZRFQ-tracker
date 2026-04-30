@@ -1,6 +1,8 @@
 {% extends 'tracker/base.html' %}
 {% block content %}
 
+<div id="page-config" data-viewer="{% if is_viewer %}1{% else %}0{% endif %}" hidden></div>
+
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
         <h5 class="mb-0 fw-bold" style="color:#003366;">
@@ -10,9 +12,11 @@
     </div>
     <div class="d-flex gap-2 align-items-center flex-wrap">
         <input type="text" id="supplierSearch" class="form-control form-control-sm" placeholder="Search suppliers…" style="width:220px;">
+        {% if not is_viewer %}
         <button class="btn btn-sm btn-primary" onclick="openAddModal()">
             <i class="bi bi-plus-lg me-1"></i>Add Supplier
         </button>
+        {% endif %}
     </div>
 </div>
 
@@ -144,6 +148,7 @@
 
 <script>
 const CSRF = '{{ csrf_token }}';
+const IS_VIEWER = document.getElementById('page-config').dataset.viewer === '1';
 const CONTACT_TYPES = [
     'PO Confirmation',
     'RFQ - Request for Quotation',
@@ -234,12 +239,13 @@ function renderTable(suppliers) {
             <td class="align-middle">${esc(s.supplier_company_name)}</td>
             ${cells}
             <td class="text-center align-middle" style="white-space:nowrap;">
+                ${IS_VIEWER ? '' : `
                 <button class="btn btn-sm btn-outline-primary" style="padding:2px 7px; font-size:11px;" onclick="openEditModal(${s.pk})" title="Edit">
                     <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger ms-1" style="padding:2px 7px; font-size:11px;" onclick="confirmDelete(${s.pk}, '${esc(s.supplier_code)}')" title="Delete">
                     <i class="bi bi-trash"></i>
-                </button>
+                </button>`}
             </td>
         </tr>`;
     });
