@@ -266,7 +266,7 @@
         <div class="dash-num" id="stat-partial" style="color:#e6a800;">{{ stats.partial }}</div>
         <div class="dash-label">Partial Response Received</div>
     </div>
-    <div class="dash-card clickable" data-card="completed">
+    <div class="dash-card clickable d-none" id="stat-card-completed" data-card="completed">
         <div class="dash-bar" style="background:#1a7a3c;"></div>
         <div class="dash-num" id="stat-completed" style="color:#1a7a3c;">{{ stats.completed }}</div>
         <div class="dash-label">Response Received</div>
@@ -1280,6 +1280,7 @@ document.querySelectorAll('#statsToggle button').forEach(btn => {
             b.classList.toggle('btn-outline-secondary', b !== this);
         });
         applyStatsToCards(_statsMode === 'supplier' ? _statsSupplier : _statsRow);
+        document.getElementById('stat-card-completed').classList.toggle('d-none', _statsMode === 'supplier');
     });
 });
 
