@@ -728,7 +728,11 @@ def rfq_export(request):
 def _parse_info_sheet(ws):
     """
     Parse the Info sheet from a ZEISS Supplier Template workbook.
-    Returns (supplier_code, company_name, contacts_list) or raises ValueError.
+
+    Handles both single-supplier templates and the full export format which
+    contains all suppliers in one sheet.  Returns a list of
+    (supplier_code, company_name, contacts_list) tuples — one per supplier
+    found in the sheet.
     """
     def _n(val):
         if val is None:
@@ -738,73 +742,101 @@ def _parse_info_sheet(ws):
             t = t.replace(ch, '')
         return ' '.join(t.split()).strip()
 
-    supplier_code = ''
-    company_name = ''
-    contact_header_row = None
-    col_map = {}
+    VALID_TYPES = {ct for ct, _ in SupplierContact.CONTACT_TYPE_CHOICES}
     all_rows = list(ws.iter_rows(values_only=True))
 
-    for row_idx, row_vals in enumerate(all_rows, start=1):
-        for col_idx, raw in enumerate(row_vals):
-            nval = _n(raw)
-            nl = nval.lower()
+    # Find the row index of every "Supplier Code" label — each marks a new supplier section.
+    section_starts = []
+    for row_idx, row_vals in enumerate(all_rows):
+        for raw in row_vals:
+            if _n(raw).lower() in ('supplier code', 'supplier code:'):
+                section_starts.append(row_idx)
+                break
 
-            if nl in ('supplier code', 'supplier code:') and not supplier_code:
-                for v2 in row_vals[col_idx + 1:]:
-                    nv2 = _n(v2)
-                    if nv2:
-                        supplier_code = nv2
-                        break
+    if not section_starts:
+        return [('', '', [])]
 
-            if 'supplier company name' in nl and not company_name:
-                for v2 in row_vals[col_idx + 1:]:
-                    nv2 = _n(v2)
-                    if nv2:
-                        company_name = nv2
-                        break
+    section_starts.append(len(all_rows))  # sentinel
 
-            if nl == 'contact type' and contact_header_row is None:
-                contact_header_row = row_idx
-                for ci, hraw in enumerate(row_vals):
-                    hv = _n(hraw).lower()
-                    if hv == 'contact type':
-                        col_map['contact_type'] = ci
-                    elif hv == 'name':
-                        col_map['name'] = ci
-                    elif hv == 'email':
-                        col_map['email'] = ci
-                    elif hv == 'phone':
-                        col_map['phone'] = ci
-                    elif 'role' in hv or 'title' in hv:
-                        col_map['role_title'] = ci
+    result = []
+    for i in range(len(section_starts) - 1):
+        section_rows = all_rows[section_starts[i]:section_starts[i + 1]]
 
-    contacts = []
-    VALID_TYPES = {ct for ct, _ in SupplierContact.CONTACT_TYPE_CHOICES}
-    ct_col = col_map.get('contact_type')
-    if contact_header_row is not None and ct_col is not None:
-        for row_vals in all_rows[contact_header_row:]:
-            ct_val = _n(row_vals[ct_col]) if ct_col < len(row_vals) else ''
-            if not ct_val or ct_val.isdigit():
-                continue
-            matched_type = ct_val
-            for vt in VALID_TYPES:
-                if ct_val.lower() in vt.lower() or vt.lower() in ct_val.lower():
-                    matched_type = vt
+        supplier_code = ''
+        company_name = ''
+        contacts = []
+        col_map = {}
+        in_contacts = False
+
+        for row_vals in section_rows:
+            row_handled = False
+
+            for col_idx, raw in enumerate(row_vals):
+                nval = _n(raw)
+                nl = nval.lower()
+
+                if nl in ('supplier code', 'supplier code:') and not supplier_code:
+                    for v2 in row_vals[col_idx + 1:]:
+                        nv2 = _n(v2)
+                        if nv2:
+                            supplier_code = nv2
+                            break
+                    row_handled = True
                     break
 
-            def _gv(key):
-                ci = col_map.get(key)
-                return _n(row_vals[ci]) if ci is not None and ci < len(row_vals) else ''
+                if 'supplier company name' in nl and not company_name:
+                    for v2 in row_vals[col_idx + 1:]:
+                        nv2 = _n(v2)
+                        if nv2:
+                            company_name = nv2
+                            break
+                    row_handled = True
+                    break
 
-            contacts.append({
-                'contact_type': matched_type,
-                'name':         _gv('name'),
-                'email':        _gv('email'),
-                'phone':        _gv('phone'),
-                'role_title':   _gv('role_title'),
-            })
+                if nl == 'contact type' and not in_contacts:
+                    in_contacts = True
+                    for ci, hraw in enumerate(row_vals):
+                        hv = _n(hraw).lower()
+                        if hv == 'contact type':
+                            col_map['contact_type'] = ci
+                        elif hv == 'name':
+                            col_map['name'] = ci
+                        elif hv == 'email':
+                            col_map['email'] = ci
+                        elif hv == 'phone':
+                            col_map['phone'] = ci
+                        elif 'role' in hv or 'title' in hv:
+                            col_map['role_title'] = ci
+                    row_handled = True
+                    break
 
-    return supplier_code, company_name, contacts
+            if in_contacts and not row_handled and col_map:
+                ct_col = col_map.get('contact_type')
+                if ct_col is not None and ct_col < len(row_vals):
+                    ct_val = _n(row_vals[ct_col])
+                    if ct_val and not ct_val.isdigit():
+                        matched_type = ct_val
+                        for vt in VALID_TYPES:
+                            if ct_val.lower() in vt.lower() or vt.lower() in ct_val.lower():
+                                matched_type = vt
+                                break
+
+                        def _gv(key, rv=row_vals):
+                            ci = col_map.get(key)
+                            return _n(rv[ci]) if ci is not None and ci < len(rv) else ''
+
+                        contacts.append({
+                            'contact_type': matched_type,
+                            'name':         _gv('name'),
+                            'email':        _gv('email'),
+                            'phone':        _gv('phone'),
+                            'role_title':   _gv('role_title'),
+                        })
+
+        if supplier_code:
+            result.append((supplier_code, company_name, contacts))
+
+    return result if result else [('', '', [])]
 
 
 def _entries_identical(existing, incoming_kwargs):
@@ -1078,8 +1110,9 @@ def rfq_bulk_upload(request):
             if 'Info' in wb.sheetnames:
                 ws_info = wb['Info']
                 try:
-                    supplier_code, company_name, contacts = _parse_info_sheet(ws_info)
-                    if supplier_code:
+                    for supplier_code, company_name, contacts in _parse_info_sheet(ws_info):
+                        if not supplier_code:
+                            continue
                         supplier, was_created = Supplier.objects.get_or_create(
                             supplier_code=supplier_code,
                             defaults={'supplier_company_name': company_name},
@@ -1537,35 +1570,38 @@ def supplier_template_upload(request):
             wb = openpyxl.load_workbook(f, data_only=True)
             ws = wb['Info'] if 'Info' in wb.sheetnames else wb.worksheets[0]
 
-            supplier_code, company_name, contacts = _parse_info_sheet(ws)
-
-            if not supplier_code:
+            parsed = _parse_info_sheet(ws)
+            if not any(code for code, _, __ in parsed):
                 errors.append(f"{f.name}: Could not find 'Supplier Code' in the Info sheet.")
                 continue
 
-            supplier, was_created = Supplier.objects.get_or_create(
-                supplier_code=supplier_code,
-                defaults={'supplier_company_name': company_name},
-            )
-            if not was_created:
-                supplier.supplier_company_name = company_name
-                supplier.save()
-                updated += 1
-            else:
-                created += 1
-
-            supplier.contacts.all().delete()
-            for c in contacts:
-                if not any([c['name'], c['email'], c['phone'], c['role_title']]):
+            for supplier_code, company_name, contacts in parsed:
+                if not supplier_code:
                     continue
-                SupplierContact.objects.create(
-                    supplier=supplier,
-                    contact_type=c['contact_type'],
-                    name=c['name'],
-                    email=c['email'],
-                    phone=c['phone'],
-                    role_title=c['role_title'],
+
+                supplier, was_created = Supplier.objects.get_or_create(
+                    supplier_code=supplier_code,
+                    defaults={'supplier_company_name': company_name},
                 )
+                if not was_created:
+                    supplier.supplier_company_name = company_name
+                    supplier.save()
+                    updated += 1
+                else:
+                    created += 1
+
+                supplier.contacts.all().delete()
+                for c in contacts:
+                    if not any([c['name'], c['email'], c['phone'], c['role_title']]):
+                        continue
+                    SupplierContact.objects.create(
+                        supplier=supplier,
+                        contact_type=c['contact_type'],
+                        name=c['name'],
+                        email=c['email'],
+                        phone=c['phone'],
+                        role_title=c['role_title'],
+                    )
 
         except Exception as e:
             errors.append(f"{f.name}: {e}")
