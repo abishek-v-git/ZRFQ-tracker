@@ -1343,7 +1343,13 @@ let activeRefTextarea = null;
 
 function openLongNoteModal(textarea) {
     activeRefTextarea = textarea;
-    document.getElementById('longNoteEditor').value = textarea.value;
+    const editor = document.getElementById('longNoteEditor');
+    const saveBtn = document.getElementById('longNoteSaveBtn');
+    editor.value = textarea.value;
+    const isReadOnly = textarea.hasAttribute('readonly');
+    editor.readOnly = isReadOnly;
+    editor.style.background = isReadOnly ? '#f8f9fa' : '';
+    saveBtn.style.display = isReadOnly ? 'none' : '';
     new bootstrap.Modal(document.getElementById('longNoteModal')).show();
 }
 
@@ -1872,7 +1878,14 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
                     <span class="status-sel-badge">${statusLabel}</span>
                 </div>
             </td>
-            <td class="comments-cell" style="min-width:200px;">${esc(e.comments)||'—'}</td>
+            <td class="comments-cell" style="min-width:200px;"><div class="comment-container">
+                <textarea class="form-control form-control-sm comments-txt" rows="1" readonly
+                          style="background:#f8f9fa;cursor:default;">${esc(e.comments)}</textarea>
+                <button type="button" class="expand-comment-btn" title="View Full Comment"
+                        onclick="openLongNoteModal(this.previousElementSibling)">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            </div></td>
             <td></td>
         </tr>`;
     }
