@@ -411,7 +411,7 @@ def rfq_data(request):
             Q(supplier_code__icontains=q) | Q(supplier_name__icontains=q) |
             Q(part_no__icontains=q) | Q(part_description__icontains=q) |
             Q(manufacture_part_number__icontains=q) | Q(manufacturer_name__icontains=q) |
-            Q(pic__icontains=q) | Q(coo__icontains=q) | Q(hts_code__icontains=q) |
+            Q(pic__icontains=q) | Q(pr__icontains=q) | Q(coo__icontains=q) | Q(hts_code__icontains=q) |
             Q(eccn_ear99__icontains=q) | Q(status__icontains=q) | Q(comments__icontains=q)
         )
 
@@ -500,7 +500,7 @@ def rfq_all_pks(request):
             Q(supplier_code__icontains=q) | Q(supplier_name__icontains=q) |
             Q(part_no__icontains=q) | Q(part_description__icontains=q) |
             Q(manufacture_part_number__icontains=q) | Q(manufacturer_name__icontains=q) |
-            Q(pic__icontains=q) | Q(coo__icontains=q) | Q(hts_code__icontains=q) |
+            Q(pic__icontains=q) | Q(pr__icontains=q) | Q(coo__icontains=q) | Q(hts_code__icontains=q) |
             Q(eccn_ear99__icontains=q) | Q(status__icontains=q) | Q(comments__icontains=q)
         )
 
