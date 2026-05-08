@@ -17,6 +17,7 @@ urlpatterns = [
     path('patch/<int:pk>/', views.rfq_patch, name='rfq_patch'),
     path('edit-json/<int:pk>/', views.rfq_edit_json, name='rfq_edit_json'),
     path('data/', views.rfq_data, name='rfq_data'),
+    path('all-pks/', views.rfq_all_pks, name='rfq_all_pks'),
     path('stats/', views.rfq_stats, name='rfq_stats'),
     # Supplier Info
     path('suppliers/', views.supplier_list, name='supplier_list'),

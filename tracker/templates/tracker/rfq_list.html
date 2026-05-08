@@ -358,7 +358,7 @@
             <thead>
                 <tr>
                     <th class="col-check" style="background:#003366;">
-                        {% if not is_viewer %}<input type="checkbox" class="form-check-input" id="selectAll" title="Select all on this page">{% endif %}
+                        {% if not is_viewer %}<input type="checkbox" class="form-check-input" id="selectAll" title="Select all rows (all pages)">{% endif %}
                     </th>
                     <th class="sortable" data-col="0">#</th>
                     <th class="sortable" data-col="1">Supplier Code</th>
@@ -1597,11 +1597,11 @@ function updateBulkBar() {
     } else {
         bar.classList.remove('visible');
     }
-    // Sync select-all checkbox state
-    const all = document.querySelectorAll('.row-check');
+    // Sync select-all checkbox state against total (all pages)
     const selectAllCb = document.getElementById('selectAll');
     if (!selectAllCb) return;
-    if (all.length > 0 && selectedPks.size === all.length) {
+    const total = (window.rfqTableState && window.rfqTableState.total) || 0;
+    if (total > 0 && selectedPks.size >= total) {
         selectAllCb.checked = true;
         selectAllCb.indeterminate = false;
     } else if (selectedPks.size === 0) {
@@ -1624,13 +1624,31 @@ function clearSelection() {
 
 const _selectAll = document.getElementById('selectAll');
 if (_selectAll) _selectAll.addEventListener('change', function() {
-    document.querySelectorAll('.row-check').forEach(cb => {
-        cb.checked = this.checked;
-        const pk = parseInt(cb.dataset.pk);
-        if (this.checked) selectedPks.add(pk);
-        else selectedPks.delete(pk);
-    });
-    updateBulkBar();
+    if (!this.checked) {
+        // Deselect all
+        selectedPks.clear();
+        document.querySelectorAll('.row-check').forEach(cb => { cb.checked = false; });
+        updateBulkBar();
+        return;
+    }
+    // Fetch all matching PKs across all pages, then select them
+    const state = window.rfqTableState || {};
+    const q    = encodeURIComponent(state.searchQuery || '');
+    const card = encodeURIComponent(state.activeCard  || '');
+    const cb   = this;
+    cb.disabled = true;
+    fetch(`/all-pks/?q=${q}&card=${card}`)
+        .then(r => r.json())
+        .then(function(data) {
+            data.pks.forEach(pk => selectedPks.add(pk));
+            document.querySelectorAll('.row-check').forEach(el => { el.checked = true; });
+            cb.disabled = false;
+            updateBulkBar();
+        })
+        .catch(function() {
+            cb.disabled = false;
+            cb.checked = false;
+        });
 });
 
 const _bulkStatusSel = document.getElementById('bulkStatusSel');
@@ -2085,10 +2103,13 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
         const ps = pageSize === 'all' ? 'all' : pageSize;
         const url = `/data/?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=${ps}&sort_col=${sortCol}&sort_dir=${sortDir}&card=${encodeURIComponent(activeCard)}`;
         tbody.innerHTML = '<tr><td colspan="49" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading…</td></tr>';
+        window.rfqTableState.searchQuery = searchQuery;
+        window.rfqTableState.activeCard  = activeCard;
 
         fetch(url)
         .then(r => r.json())
         .then(function(data) {
+            window.rfqTableState.total = data.total;
             updateCountUI(data.total);
             if (data.entries.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="49" class="text-center text-muted py-5">No entries found. Click <strong>+ Add New Item</strong> to get started.</td></tr>';
@@ -2218,6 +2239,7 @@ if (_bulkDeleteBtn) _bulkDeleteBtn.addEventListener('click', function() {
     });
 
     window.reloadTable = function() { fetchData(); updateDashboard(); };
+    window.rfqTableState = { searchQuery: '', activeCard: '', total: 0 };
     fetchData();
     updateDashboard();
     })();

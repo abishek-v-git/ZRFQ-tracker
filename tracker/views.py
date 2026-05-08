@@ -463,6 +463,51 @@ def rfq_data(request):
 
 
 @login_required
+def rfq_all_pks(request):
+    """Return PKs for all rows matching the current search/filter (no pagination)."""
+    from django.db.models import Q, Count, F
+    q    = request.GET.get('q', '').strip()
+    card = request.GET.get('card', '').strip()
+    KNOWN = {'Completed', 'Partially Data Received', 'No Response Yet'}
+
+    qs = RFQEntry.objects.all()
+
+    if card == 'sent':
+        qs = qs.exclude(status='')
+    elif card == 'not_sent':
+        qs = qs.filter(status='')
+    elif card == 'partial':
+        qs = qs.filter(status='Partially Data Received')
+    elif card == 'completed':
+        qs = qs.filter(status='Completed')
+    elif card == 'no_resp':
+        qs = qs.filter(status='No Response Yet')
+    elif card == 'not_valid':
+        qs = qs.exclude(status='').exclude(status__in=KNOWN)
+    elif card == 'fully_completed_suppliers':
+        completed_codes = (
+            RFQEntry.objects
+            .values('supplier_code')
+            .annotate(total=Count('pk'), completed_count=Count('pk', filter=Q(status='Completed')))
+            .filter(total=F('completed_count'))
+            .values_list('supplier_code', flat=True)
+        )
+        qs = qs.filter(supplier_code__in=list(completed_codes))
+
+    if q:
+        qs = qs.filter(
+            Q(supplier_code__icontains=q) | Q(supplier_name__icontains=q) |
+            Q(part_no__icontains=q) | Q(part_description__icontains=q) |
+            Q(manufacture_part_number__icontains=q) | Q(manufacturer_name__icontains=q) |
+            Q(pic__icontains=q) | Q(coo__icontains=q) | Q(hts_code__icontains=q) |
+            Q(eccn_ear99__icontains=q) | Q(status__icontains=q) | Q(comments__icontains=q)
+        )
+
+    pks = list(qs.values_list('pk', flat=True))
+    return JsonResponse({'pks': pks})
+
+
+@login_required
 @editor_required
 def rfq_add(request):
     if request.method == 'POST':
