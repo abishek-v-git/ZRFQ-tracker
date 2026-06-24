@@ -551,6 +551,36 @@ def rfq_edit(request, pk):
 
 
 @login_required
+def fully_completed_supplier_list(request):
+    from django.db.models import Count, Q, F, Max
+    # Group by supplier_code only — matches _compute_stats logic exactly
+    qs = (
+        RFQEntry.objects
+        .values('supplier_code')
+        .annotate(
+            total=Count('pk'),
+            sent_count=Count('pk', filter=Q(rfq_sent='Yes')),
+            completed_count=Count('pk', filter=Q(status='Completed')),
+            supplier_name=Max('supplier_name'),
+        )
+        .filter(sent_count__gt=0, total=F('completed_count'))
+        .order_by('supplier_name')
+    )
+    suppliers = list(qs)
+    return JsonResponse({
+        'count': len(suppliers),
+        'suppliers': [
+            {
+                'supplier_code': s['supplier_code'],
+                'supplier_name': s['supplier_name'],
+                'row_count': s['total'],
+            }
+            for s in suppliers
+        ],
+    })
+
+
+@login_required
 def rfq_export(request):
     entries   = RFQEntry.objects.all()
     suppliers = Supplier.objects.prefetch_related('contacts').all()

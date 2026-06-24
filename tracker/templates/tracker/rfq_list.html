@@ -281,10 +281,15 @@
         <div class="dash-num" id="stat-no-resp" style="color:#6c757d;">{{ stats.no_resp }}</div>
         <div class="dash-label">No Response</div>
     </div>
-    <div class="dash-card clickable" data-card="fully_completed_suppliers">
+    <div class="dash-card clickable" data-card="fully_completed_suppliers" style="position:relative;">
         <div class="dash-bar" style="background:#0d6efd;"></div>
         <div class="dash-num" id="stat-fully-completed" style="color:#0d6efd;">{{ stats.fully_completed_suppliers }}</div>
         <div class="dash-label">Suppliers Fully Completed</div>
+        <button class="btn btn-link btn-sm p-0" style="position:absolute;top:6px;right:6px;color:#0d6efd;"
+                title="View supplier list"
+                onclick="event.stopPropagation(); openFullyCompletedModal();">
+            <i class="bi bi-list-ul" style="font-size:14px;"></i>
+        </button>
     </div>
     <button id="card-reset-btn" class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-x-circle me-1"></i>Reset Filter
@@ -464,6 +469,36 @@
     </button>
 </div>
 {% endif %}
+
+<!-- ── Fully Completed Suppliers Modal ── -->
+<div class="modal fade" id="fullyCompletedModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2" style="background:#003366;">
+                <h6 class="modal-title text-white"><i class="bi bi-check-circle me-2"></i>Suppliers Fully Completed — <span id="fcModalCount">0</span></h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-sm table-hover mb-0" id="fcSupplierTable">
+                    <thead style="position:sticky;top:0;background:#f0f4fa;z-index:1;">
+                        <tr>
+                            <th class="ps-3">#</th>
+                            <th>Supplier Code</th>
+                            <th>Supplier Name</th>
+                            <th class="text-center">Row Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fcSupplierTbody">
+                        <tr><td colspan="4" class="text-center text-muted py-3">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ── Add New Item Modal ── -->
 <div class="modal fade" id="addModal" tabindex="-1" data-has-errors="{% if form.errors %}1{% else %}0{% endif %}">
@@ -1306,6 +1341,32 @@ function updateDashboard() {
             applyStatsToCards(_statsMode === 'supplier' ? _statsSupplier : _statsRow);
         })
         .catch(() => {});
+}
+
+function openFullyCompletedModal() {
+    const tbody = document.getElementById('fcSupplierTbody');
+    const countEl = document.getElementById('fcModalCount');
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Loading…</td></tr>';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('fullyCompletedModal')).show();
+    fetch('/fully-completed-suppliers/')
+        .then(r => r.json())
+        .then(data => {
+            countEl.textContent = data.count;
+            if (!data.suppliers.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No fully completed suppliers.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.suppliers.map((s, i) => `
+                <tr>
+                    <td class="ps-3 text-muted">${i + 1}</td>
+                    <td><code>${s.supplier_code}</code></td>
+                    <td>${s.supplier_name}</td>
+                    <td class="text-center">${s.row_count}</td>
+                </tr>`).join('');
+        })
+        .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Failed to load.</td></tr>';
+        });
 }
 
 function patchField(pk, field, value, feedbackEl) {

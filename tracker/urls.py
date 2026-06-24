@@ -19,6 +19,7 @@ urlpatterns = [
     path('data/', views.rfq_data, name='rfq_data'),
     path('all-pks/', views.rfq_all_pks, name='rfq_all_pks'),
     path('stats/', views.rfq_stats, name='rfq_stats'),
+    path('fully-completed-suppliers/', views.fully_completed_supplier_list, name='fully_completed_supplier_list'),
     # Supplier Info
     path('suppliers/', views.supplier_list, name='supplier_list'),
     path('suppliers/data/', views.supplier_data, name='supplier_data'),
