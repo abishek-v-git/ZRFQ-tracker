@@ -219,7 +219,11 @@ def _coerce(field, value):
     # String fields: whole-number floats → strip decimal (e.g. 5659202.0 → '5659202')
     if isinstance(value, float) and value == int(value):
         return str(int(value))
-    return str(value).strip()
+    s = str(value).strip()
+    # Also strip .0 from text cells that look like whole-number floats (e.g. re-imported exports)
+    if s.endswith('.0') and s[:-2].lstrip('-').isdigit():
+        return s[:-2]
+    return s
 
 
 def _entry_to_dict(entry):
