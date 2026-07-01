@@ -92,3 +92,9 @@ class RFQEntryForm(forms.ModelForm):
             ]),
             'comments':                  forms.Textarea(attrs=_area(2)),
         }
+
+    def clean_supplier_code(self):
+        code = self.cleaned_data.get('supplier_code', '')
+        if code and code.endswith('.0') and code[:-2].lstrip('-').isdigit():
+            return code[:-2]
+        return code

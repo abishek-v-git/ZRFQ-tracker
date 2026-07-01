@@ -174,6 +174,13 @@ def _resolve_header(text):
     return None
 
 
+def _clean_supplier_code(code):
+    """Strip trailing .0 from whole-number supplier codes (e.g. '5659202.0' → '5659202')."""
+    if code and isinstance(code, str) and code.endswith('.0') and code[:-2].lstrip('-').isdigit():
+        return code[:-2]
+    return code
+
+
 def _coerce(field, value):
     if value is None or str(value).strip() == '':
         # Numeric/date fields accept NULL; CharFields must use empty string
@@ -644,7 +651,7 @@ def rfq_export(request):
             ws_info[f'A{current_row}'] = 'Supplier Code'
             ws_info[f'A{current_row}'].font = lbl_font
             ws_info.merge_cells(f'B{current_row}:F{current_row}')
-            ws_info[f'B{current_row}'] = supplier.supplier_code
+            ws_info[f'B{current_row}'] = _clean_supplier_code(supplier.supplier_code)
             current_row += 1
 
             # Company Name row
@@ -732,7 +739,7 @@ def rfq_export(request):
 
     for row_idx, entry in enumerate(entries, start=2):
         row = [
-            entry.supplier_code,
+            _clean_supplier_code(entry.supplier_code),
             entry.supplier_name,
             entry.part_no,
             entry.part_description,
@@ -818,7 +825,10 @@ def _parse_info_sheet(ws):
     def _n(val):
         if val is None:
             return ''
-        t = str(val)
+        if isinstance(val, float) and val == int(val):
+            t = str(int(val))
+        else:
+            t = str(val)
         for ch in '▼▾▽▶↓▴':
             t = t.replace(ch, '')
         return ' '.join(t.split()).strip()
