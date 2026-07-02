@@ -808,7 +808,7 @@ def rfq_export(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    response['Content-Disposition'] = f'attachment; filename="RFQ_Tracker_Export_{timestamp}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="Zeiss_MDG_Tracker_Export_{timestamp}.xlsx"'
     wb.save(response)
     return response
 
